@@ -117,7 +117,7 @@ export function LyricsContent({
       )}
 
       {!lyricsState.loading && lyricsState.data && !hasSynced && hasPlain && (
-        <div className={`${classPrefix}-lines`} style={{ fontFamily }}>
+        <div className={`${classPrefix}-lines`} style={{ fontFamily, textAlign: settings.textAlign }}>
           {lyricsState.data.plainLyrics.split("\n").map((line, index) => (
             <div
               key={index}

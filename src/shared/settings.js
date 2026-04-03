@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS = {
   backgroundOpacity: 88,
   autoScroll: true,
   hideFloatingWhenPiPOpen: false,
+  textAlign: "left",
 };
 
 export const SETTINGS_KEY = "lyrics_extension_settings";
