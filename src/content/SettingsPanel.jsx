@@ -194,6 +194,19 @@ export function SettingsPanel({ settings, onChange, onReset }) {
         />
       </div>
 
+      <div className="yl-settings-group">
+        <label className="yl-settings-label">Text Align</label>
+        <select
+          className="yl-settings-select"
+          value={settings.textAlign}
+          onChange={(e) => handleChange("textAlign", e.target.value)}
+        >
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
+
       <button className="yl-settings-reset" onClick={onReset}>
         Reset to Default
       </button>
