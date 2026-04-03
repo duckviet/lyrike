@@ -13,7 +13,6 @@ export const fetchVideoDetails = async (videoId) => {
   }
 
   const video = data.items[0];
-  console.log('Fetched video details:', video);
   return {
     id: video.id,
     title: video.snippet.title,

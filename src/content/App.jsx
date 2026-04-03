@@ -53,8 +53,6 @@ export default function App() {
     () => parseSyncedLyrics(syncedLyricsText),
     [syncedLyricsText],
   );
-  console.log("Parsed lyrics state:", lyricsState);
-  console.log("Parsed synced lyrics:", syncedLines);
 
   const activeIndex = useMemo(
     () => getActiveLineIndex(syncedLines, currentTime),
