@@ -5,4 +5,9 @@ import manifest from './manifest.config.js';
 
 export default defineConfig({
   plugins: [react(), crx({ manifest })],
+  server: {
+    cors: {
+      origin: [/chrome-extension:\/\//],
+    },
+  },
 });

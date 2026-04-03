@@ -57,7 +57,6 @@ export function getWatchInfo() {
     "#owner #channel-name a",
   ]);
 
-  console.log("[Lyrics] Inferred track info:", { title, channelName });
   const { artistName, trackName } = inferSongInfo(title, channelName);
   return { videoId, title, channelName, artistName, trackName };
 }

@@ -194,6 +194,14 @@ export function SettingsPanel({ settings, onChange, onReset }) {
         />
       </div>
 
+      <div className="yl-settings-group yl-settings-row">
+        <label className="yl-settings-label">PiP dominant color</label>
+        <Toggle
+          checked={settings.usePiPDominantColorTheme}
+          onChange={(v) => handleChange("usePiPDominantColorTheme", v)}
+        />
+      </div>
+
       <div className="yl-settings-group">
         <label className="yl-settings-label">Text Align</label>
         <select

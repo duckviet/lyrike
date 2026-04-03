@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS = {
   backgroundOpacity: 88,
   autoScroll: true,
   hideFloatingWhenPiPOpen: false,
+  usePiPDominantColorTheme: true,
   textAlign: "left",
 };
 

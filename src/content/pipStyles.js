@@ -20,12 +20,15 @@ html, body, #ytl-pip-root {
   --pip-bg-primary: rgba(15, 15, 18, var(--pip-bg-opacity));
   --pip-bg-secondary: rgba(28, 28, 32, 0.9);
   --pip-bg-tertiary: rgba(45, 45, 52, 0.8);
+  --pip-bg-hover: rgba(255, 255, 255, 0.08);
+  --pip-bg-active: rgba(255, 255, 255, 0.12);
   --pip-text-primary: #ffffff;
   --pip-text-secondary: rgba(255, 255, 255, 0.68);
   --pip-text-muted: rgba(255, 255, 255, 0.44);
   --pip-text-accent: rgba(180, 160, 255, 0.92);
-  --pip-border-subtle: rgba(255, 255, 255, 0.08);
-  --pip-border-light: rgba(255, 255, 255, 0.14);
+  /* --pip-border-subtle: rgba(255, 255, 255, 0.08);
+  --pip-border-light: rgba(255, 255, 255, 0.14); */
+  --pip-accent-glow: rgba(180, 160, 255, 0.22);
   --pip-radius: 12px;
   --pip-radius-sm: 8px;
 }
@@ -54,7 +57,17 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(35, 35, 42, var(--pip-bg-opacity)) 0%, var(--pip-bg-primary) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--pip-bg-secondary) 0%,
+    var(--pip-bg-primary) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 0 1px var(--pip-border-subtle),
+    0 24px 52px rgba(0, 0, 0, 0.22),
+    0 0 0 1px var(--pip-border-light),
+    0 0 28px var(--pip-accent-glow);
   border-radius: 16px;
   overflow: hidden;
 }
@@ -65,8 +78,8 @@ body {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid var(--pip-border-subtle);
+  background: var(--pip-bg-tertiary);
+  border-bottom: 1px solid var(--pip-border-light);
 }
 
 .pip-meta {
@@ -107,20 +120,20 @@ body {
 }
 
 .pip-close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--pip-bg-hover);
   color: var(--pip-text-primary);
 }
 
 .pip-tabs-wrapper {
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid var(--pip-border-subtle);
+  background: var(--pip-bg-secondary);
+  border-bottom: 1px solid var(--pip-border-light);
 }
 
 .pip-tabs {
   display: flex;
   gap: 4px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--pip-bg-tertiary);
   border-radius: var(--pip-radius-sm);
   padding: 3px;
 }
@@ -144,7 +157,8 @@ body {
 
 .pip-tab.active {
   color: var(--pip-text-primary);
-  background: var(--pip-bg-secondary);
+  background: linear-gradient(180deg, var(--pip-bg-active), var(--pip-bg-hover));
+  box-shadow: inset 0 0 0 1px var(--pip-border-subtle);
 }
 
 .pip-body {
@@ -163,12 +177,12 @@ body {
 }
 
 .pip-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--pip-border-subtle);
   border-radius: 3px;
 }
 
 .pip-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--pip-border-light);
 }
 
 .pip-status {
@@ -204,7 +218,7 @@ body {
 .pip-line.active {
   color: var(--pip-text-primary);
   font-weight: 600;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.12);
+  text-shadow: 0 0 20px var(--pip-accent-glow);
   transform: scale(1.01);
   transform-origin: left center;
 }
@@ -216,7 +230,7 @@ body {
 .pip-footer {
   margin-top: 14px;
   padding-top: 10px;
-  border-top: 1px solid var(--pip-border-subtle);
+  border-top: 1px solid var(--pip-border-light);
   font-size: 10px;
   color: var(--pip-text-muted);
 }
