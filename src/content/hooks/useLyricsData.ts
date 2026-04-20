@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LyricsState, WatchInfo } from "../../shared/types";
+import { LyricsState, WatchInfo } from "../shared/types";
 
 function createEmptyLyricsState(): LyricsState {
   return {
@@ -9,14 +9,24 @@ function createEmptyLyricsState(): LyricsState {
   };
 }
 
+/**
+ * Fetches lyrics data for the given track via Chrome runtime messaging.
+ * @param track Track information containing videoId and metadata.
+ */
 export function useLyricsData(track: WatchInfo | null): LyricsState {
   const [lyricsState, setLyricsState] = useState<LyricsState>(
     createEmptyLyricsState(),
   );
 
+  // Reset state when track changes
+  const [prevVideoId, setPrevVideoId] = useState(track?.videoId);
+  if (track?.videoId !== prevVideoId) {
+    setPrevVideoId(track?.videoId);
+    setLyricsState(createEmptyLyricsState());
+  }
+
   useEffect(() => {
     if (!track?.videoId || !track?.trackName) {
-      setLyricsState(createEmptyLyricsState());
       return;
     }
 
@@ -25,20 +35,24 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
       !chrome.runtime ||
       !chrome.runtime.sendMessage
     ) {
-      setLyricsState({
-        loading: false,
-        data: null,
-        error: "Chrome runtime is unavailable",
+      requestAnimationFrame(() => {
+        setLyricsState({
+          loading: false,
+          data: null,
+          error: "Chrome runtime is unavailable",
+        });
       });
       return;
     }
 
     let cancelled = false;
 
-    setLyricsState({
-      loading: true,
-      data: null,
-      error: "",
+    requestAnimationFrame(() => {
+      setLyricsState({
+        loading: true,
+        data: null,
+        error: "",
+      });
     });
 
     try {
@@ -56,7 +70,6 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
           if (cancelled) {
             return;
           }
-
           if (chrome.runtime.lastError) {
             setLyricsState({
               loading: false,
@@ -82,12 +95,14 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
           });
         },
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!cancelled) {
-        setLyricsState({
-          loading: false,
-          data: null,
-          error: error?.message || "Fetch failed",
+        requestAnimationFrame(() => {
+          setLyricsState({
+            loading: false,
+            data: null,
+            error: error instanceof Error ? error.message : "Fetch failed",
+          });
         });
       }
     }

@@ -4,8 +4,8 @@ import {
   resetSettings,
   saveSettings,
   subscribeSettingsChange,
-} from "../../shared/settings";
-import { Settings } from "../../shared/types";
+} from "../shared/settings";
+import { Settings } from "../shared/types";
 
 export function useLyricsSettings(): {
   settings: Settings | null;

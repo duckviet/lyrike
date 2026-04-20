@@ -1,5 +1,5 @@
 import { getPaletteSync, Color } from "colorthief";
-import { ThemeVars } from "../../shared/types";
+import { ThemeVars } from "../shared/types";
 
 interface RgbColor {
   r: number;
@@ -69,7 +69,10 @@ export function createThumbnailThemeFromPalette(palette: Color[]): ThemeVars {
   };
 }
 
-export async function createThumbnailTheme(videoId: string | undefined, enabled: boolean = true): Promise<ThemeVars> {
+export async function createThumbnailTheme(
+  videoId: string | undefined,
+  enabled: boolean = true,
+): Promise<ThemeVars> {
   if (!enabled || !videoId) {
     return {};
   }

@@ -1,21 +1,6 @@
 import React from "react";
-import { Settings } from "../../shared/types";
-
-const FONTS = [
-  {
-    label: "Inter",
-    value: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-  },
-  {
-    label: "System UI",
-    value: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-  },
-  { label: "Roboto", value: "Roboto, sans-serif" },
-  { label: "Open Sans", value: "Open Sans, sans-serif" },
-  { label: "Montserrat", value: "Montserrat, sans-serif" },
-  { label: "Poppins", value: "Poppins, sans-serif" },
-  { label: "JetBrains Mono", value: "JetBrains Mono, monospace" },
-];
+import { Settings } from "../shared/types";
+import { FONTS } from "../constants/settings";
 
 interface SliderProps {
   value: number;
@@ -37,7 +22,7 @@ function Slider({
   displayValue,
 }: SliderProps): React.JSX.Element {
   return (
-    <div className="yl-slider-row">
+    <div className="flex items-center gap-[10px]">
       <input
         type="range"
         min={min}
@@ -45,9 +30,9 @@ function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="yl-slider"
+        className="yl-slider flex-1"
       />
-      <span className="yl-slider-value">
+      <span className="min-w-[42px] text-right text-[12px] text-text-secondary tabular-nums">
         {displayValue ?? `${value}${unit}`}
       </span>
     </div>
@@ -63,10 +48,16 @@ function Toggle({ checked, onChange }: ToggleProps): React.JSX.Element {
   return (
     <button
       type="button"
-      className={`yl-toggle ${checked ? "active" : ""}`}
+      className={`w-10 h-[22px] bg-bg-tertiary border border-border-subtle rounded-[11px] cursor-pointer relative transition-all duration-150 p-0.5 ${
+        checked ? "bg-text-accent border-text-accent" : ""
+      }`}
       onClick={() => onChange(!checked)}
     >
-      <span className="yl-toggle-thumb" />
+      <span
+        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-text-primary rounded-full transition-transform duration-150 ${
+          checked ? "translate-x-[18px]" : ""
+        }`}
+      />
     </button>
   );
 }
@@ -77,17 +68,24 @@ interface SettingsPanelProps {
   onReset: () => void;
 }
 
-export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProps): React.JSX.Element {
-  const handleChange = <K extends keyof Settings>(key: K, value: Settings[K]): void => {
+export function SettingsPanel({
+  settings,
+  onChange,
+  onReset,
+}: SettingsPanelProps): React.JSX.Element {
+  const handleChange = <K extends keyof Settings>(
+    key: K,
+    value: Settings[K],
+  ): void => {
     onChange({ ...settings, [key]: value });
   };
 
   return (
-    <div className="yl-settings">
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Font Family</label>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">Font Family</label>
         <select
-          className="yl-settings-select"
+          className="w-full p-[8px_10px] bg-bg-tertiary border border-border-subtle rounded-sm text-text-primary text-[13px] cursor-pointer outline-none"
           value={settings.fontFamily}
           onChange={(e) => handleChange("fontFamily", e.target.value)}
         >
@@ -99,30 +97,32 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         </select>
       </div>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Text Size</label>
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">Text Size</label>
         <Slider
           value={settings.textSize}
           onChange={(v) => handleChange("textSize", v)}
           min={12}
-          max={24}
-          unit="px"
-        />
-      </div>
-
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Active Line Size</label>
-        <Slider
-          value={settings.activeTextSize}
-          onChange={(v) => handleChange("activeTextSize", v)}
-          min={14}
           max={32}
           unit="px"
         />
       </div>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Visible Lines</label>
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">
+          Active Line Size
+        </label>
+        <Slider
+          value={settings.activeTextSize}
+          onChange={(v) => handleChange("activeTextSize", v)}
+          min={14}
+          max={40}
+          unit="px"
+        />
+      </div>
+
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">Visible Lines</label>
         <Slider
           value={settings.visibleLineCount}
           onChange={(v) => handleChange("visibleLineCount", v)}
@@ -132,8 +132,10 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         />
       </div>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Active Font Weight</label>
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">
+          Active Font Weight
+        </label>
         <Slider
           value={settings.activeFontWeight}
           onChange={(v) => handleChange("activeFontWeight", v)}
@@ -143,8 +145,10 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         />
       </div>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Inactive Opacity</label>
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">
+          Inactive Opacity
+        </label>
         <Slider
           value={Math.round(settings.inactiveOpacity * 100)}
           onChange={(v) => handleChange("inactiveOpacity", v / 100)}
@@ -154,8 +158,10 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         />
       </div>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Lyric Glide Duration</label>
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">
+          Lyric Glide Duration
+        </label>
         <Slider
           value={settings.lyricSlideDurationSec ?? 0.5}
           onChange={(v) => handleChange("lyricSlideDurationSec", v)}
@@ -166,8 +172,8 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         />
       </div>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Widget Width</label>
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">Widget Width</label>
         <Slider
           value={settings.widgetWidth}
           onChange={(v) => handleChange("widgetWidth", v)}
@@ -178,8 +184,8 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         />
       </div>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Border Radius</label>
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">Border Radius</label>
         <Slider
           value={settings.borderRadius}
           onChange={(v) => handleChange("borderRadius", v)}
@@ -189,8 +195,10 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         />
       </div>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Background Opacity</label>
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[13px] text-text-secondary">
+          Background Opacity
+        </label>
         <Slider
           value={settings.backgroundOpacity}
           onChange={(v) => handleChange("backgroundOpacity", v)}
@@ -200,36 +208,60 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         />
       </div>
 
-      <div className="yl-settings-group yl-settings-row">
-        <label className="yl-settings-label">Auto-scroll</label>
+      <div className="flex gap-[6px] flex-row items-center justify-between">
+        <label className="text-[13px] text-text-secondary">Auto-scroll</label>
         <Toggle
           checked={settings.autoScroll}
           onChange={(v) => handleChange("autoScroll", v)}
         />
       </div>
 
-      <div className="yl-settings-group yl-settings-row">
-        <label className="yl-settings-label">Hide on PiP</label>
+      <div className="flex gap-[6px] flex-row items-center justify-between">
+        <label className="text-[13px] text-text-secondary">Hide on PiP</label>
         <Toggle
           checked={settings.hideFloatingWhenPiPOpen}
           onChange={(v) => handleChange("hideFloatingWhenPiPOpen", v)}
         />
       </div>
 
-      <div className="yl-settings-group yl-settings-row">
-        <label className="yl-settings-label">PiP dominant color</label>
+      <div className="flex gap-[6px] flex-row items-center justify-between">
+        <label className="text-[13px] text-text-secondary">
+          PiP dominant color
+        </label>
         <Toggle
           checked={settings.usePiPDominantColorTheme}
           onChange={(v) => handleChange("usePiPDominantColorTheme", v)}
         />
       </div>
 
+      <div className="flex gap-[6px] flex-row items-center justify-between">
+        <label className="text-[13px] text-text-secondary">
+          PiP thumbnail background
+        </label>
+        <Toggle
+          checked={settings.pipShowThumbnailBackground}
+          onChange={(v) => handleChange("pipShowThumbnailBackground", v)}
+        />
+      </div>
+
+      <div className="flex gap-[6px] flex-row items-center justify-between">
+        <label className="text-[13px] text-text-secondary">
+          PiP video background
+        </label>
+        <Toggle
+          checked={settings.pipShowVideoBackground}
+          onChange={(v) => handleChange("pipShowVideoBackground", v)}
+        />
+      </div>
+
       <div className="yl-settings-group">
-        <label className="yl-settings-label">Text Align</label>
+        <label className="text-[13px] text-text-secondary">Text Align</label>
         <select
-          className="yl-settings-select"
+          className="w-full p-[8px_10px] bg-bg-tertiary border border-border-subtle rounded-sm text-text-primary text-[13px] cursor-pointer outline-none"
           value={settings.textAlign}
-          onChange={(e) => handleChange("textAlign", e.target.value as any)}
+          onChange={(e) =>
+            handleChange("textAlign", e.target.value as Settings["textAlign"])
+          }
         >
           <option value="left">Left</option>
           <option value="center">Center</option>
@@ -237,7 +269,10 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
         </select>
       </div>
 
-      <button className="yl-settings-reset" onClick={onReset}>
+      <button
+        className="mt-sm p-[8px_16px] border border-border-light rounded-sm bg-transparent text-text-secondary text-[12px] cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary"
+        onClick={onReset}
+      >
         Reset to Default
       </button>
     </div>

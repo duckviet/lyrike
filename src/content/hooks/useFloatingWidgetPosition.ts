@@ -4,7 +4,7 @@ import {
   WIDGET_EDGE_MARGIN,
   WIDGET_TOP_OFFSET,
 } from "../constants/ui";
-import { Position } from "../../shared/types";
+import { Position } from "../shared/types";
 
 function clampPosition(position: Position, widgetWidth: number): Position {
   return {
@@ -17,10 +17,7 @@ function clampPosition(position: Position, widgetWidth: number): Position {
     ),
     y: Math.max(
       WIDGET_EDGE_MARGIN,
-      Math.min(
-        position.y,
-        window.innerHeight - WIDGET_BOTTOM_SAFE_SPACE,
-      ),
+      Math.min(position.y, window.innerHeight - WIDGET_BOTTOM_SAFE_SPACE),
     ),
   };
 }
@@ -40,11 +37,17 @@ interface DragState {
   offsetY: number;
 }
 
+/**
+ * Manages floating widget position with drag support and boundary constraints.
+ * @param widgetWidth Width of the widget for boundary calculations.
+ */
 export function useFloatingWidgetPosition(widgetWidth: number): {
   pos: Position;
   startDrag: (event: React.MouseEvent<HTMLElement>) => void;
 } {
-  const [pos, setPos] = useState<Position>(() => getInitialPosition(widgetWidth));
+  const [pos, setPos] = useState<Position>(() =>
+    getInitialPosition(widgetWidth),
+  );
   const [dragging, setDragging] = useState<DragState | null>(null);
 
   const startDrag = useCallback((event: React.MouseEvent<HTMLElement>) => {
@@ -68,9 +71,12 @@ export function useFloatingWidgetPosition(widgetWidth: number): {
     });
   }, []);
 
-  useEffect(() => {
+  // Adjust position when width changes (e.g. from settings)
+  const [prevWidgetWidth, setPrevWidgetWidth] = useState(widgetWidth);
+  if (widgetWidth !== prevWidgetWidth) {
+    setPrevWidgetWidth(widgetWidth);
     setPos((prevPos) => clampPosition(prevPos, widgetWidth));
-  }, [widgetWidth]);
+  }
 
   useEffect(() => {
     if (!dragging) {

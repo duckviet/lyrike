@@ -24,14 +24,24 @@ function getVideoElement(): HTMLVideoElement | null {
   return document.querySelector("video");
 }
 
+/**
+ * Tracks current playback time of the video with synchronization.
+ * @param videoId Optional video ID to track. Resets when changed.
+ */
 export function useVideoCurrentTime(videoId?: string | null): number {
   const [syncAnchor, setSyncAnchor] = useState<SyncAnchor | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
 
+  // Reset when videoId changes
+  const [prevVideoId, setPrevVideoId] = useState(videoId);
+  if (videoId !== prevVideoId) {
+    setPrevVideoId(videoId);
+    setSyncAnchor(null);
+    setCurrentTime(0);
+  }
+
   useEffect(() => {
     if (!videoId) {
-      setSyncAnchor(null);
-      setCurrentTime(0);
       return;
     }
 

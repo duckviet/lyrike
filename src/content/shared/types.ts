@@ -4,6 +4,7 @@ export interface WatchInfo {
   channelName: string;
   artistName: string;
   trackName: string;
+  thumbnail?: string;
 }
 
 export interface LyricsData {
@@ -30,8 +31,8 @@ export interface PreparedLyricLine extends LyricLine {
   originalIndex: number;
   __fontVersion: number;
   __displayText: string;
-  __inactivePrepared: any; // Type from @chenglou/pretext
-  __activePrepared: any;   // Type from @chenglou/pretext
+  __inactivePrepared: unknown;
+  __activePrepared: unknown;
 }
 
 export interface Settings {
@@ -48,6 +49,8 @@ export interface Settings {
   autoScroll: boolean;
   hideFloatingWhenPiPOpen: boolean;
   usePiPDominantColorTheme: boolean;
+  pipShowThumbnailBackground: boolean;
+  pipShowVideoBackground: boolean;
   textAlign: "left" | "center" | "right";
 }
 
@@ -58,4 +61,11 @@ export interface ThemeVars {
 export interface Position {
   x: number;
   y: number;
+}
+
+export interface MeasuredSlot {
+  slotIndex: number;
+  top: number;
+  measuredHeight: number;
+  lineHeightPx: number;
 }

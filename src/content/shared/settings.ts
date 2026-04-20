@@ -14,6 +14,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoScroll: true,
   hideFloatingWhenPiPOpen: false,
   usePiPDominantColorTheme: true,
+  pipShowThumbnailBackground: false,
+  pipShowVideoBackground: false,
   textAlign: "left",
 };
 
