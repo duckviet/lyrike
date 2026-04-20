@@ -6,10 +6,15 @@ import {
 import { PIP_CSS } from "../pipStyles";
 import { preparePiPDocument } from "../utils/pipWindow";
 
-export function useLyricsPiP() {
-  const pipWindowRef = useRef(null);
-  const [pipRoot, setPipRoot] = useState(null);
-  const [isPiPOpen, setIsPiPOpen] = useState(false);
+export function useLyricsPiP(): {
+  pipRoot: HTMLElement | null;
+  isPiPOpen: boolean;
+  openLyricsPiP: () => Promise<void>;
+  closeLyricsPiP: () => void;
+} {
+  const pipWindowRef = useRef<Window | null>(null);
+  const [pipRoot, setPipRoot] = useState<HTMLElement | null>(null);
+  const [isPiPOpen, setIsPiPOpen] = useState<boolean>(false);
 
   const resetPiPState = useCallback(() => {
     pipWindowRef.current = null;

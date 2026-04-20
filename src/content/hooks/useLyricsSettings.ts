@@ -4,10 +4,15 @@ import {
   resetSettings,
   saveSettings,
   subscribeSettingsChange,
-} from "../../shared/settings.js";
+} from "../../shared/settings";
+import { Settings } from "../../shared/types";
 
-export function useLyricsSettings() {
-  const [settings, setSettings] = useState(null);
+export function useLyricsSettings(): {
+  settings: Settings | null;
+  updateSettings: (nextSettings: Settings) => void;
+  resetAllSettings: () => Promise<void>;
+} {
+  const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -32,7 +37,7 @@ export function useLyricsSettings() {
     };
   }, []);
 
-  const updateSettings = useCallback((nextSettings) => {
+  const updateSettings = useCallback((nextSettings: Settings) => {
     setSettings(nextSettings);
 
     void saveSettings(nextSettings).catch((error) => {

@@ -1,5 +1,31 @@
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef, RefObject } from "react";
 import gsap from "gsap";
+import { PreparedLyricLine } from "../../shared/types";
+
+interface MeasuredSlot {
+  slotIndex: number;
+  top: number;
+  measuredHeight: number;
+  lineHeightPx: number;
+}
+
+interface LyricsLinesProps {
+  visibleLines: PreparedLyricLine[];
+  measuredSlots: MeasuredSlot[];
+  activeIndex: number;
+  classPrefix: string;
+  activeLineRef?: RefObject<HTMLDivElement | null>;
+  textSize: number;
+  activeTextSize: number;
+  activeFontWeight: number;
+  inactiveOpacity: number;
+  inactiveLineHeightPx: number;
+  activeLineHeightPx: number;
+  maxBaseLineHeight: number;
+  lineGap: number;
+  textAlign: string;
+  slideDurationSec: number;
+}
 
 export function LyricsLines({
   visibleLines,
@@ -17,10 +43,10 @@ export function LyricsLines({
   lineGap,
   textAlign,
   slideDurationSec,
-}) {
-  const groupRef = useRef(null);
-  const previousActiveIndexRef = useRef(activeIndex);
-  const previousActiveTopRef = useRef(null);
+}: LyricsLinesProps): React.JSX.Element {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const previousActiveIndexRef = useRef<number>(activeIndex);
+  const previousActiveTopRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     const groupElement = groupRef.current;
@@ -100,14 +126,18 @@ export function LyricsLines({
             fontWeight:
               line.originalIndex === activeIndex ? activeFontWeight : 400,
             opacity: line.originalIndex === activeIndex ? 1 : inactiveOpacity,
-            minHeight: `${Math.ceil(measuredSlots[slotIndex]?.measuredHeight ??
+            minHeight: `${Math.ceil(
+              measuredSlots[slotIndex]?.measuredHeight ??
+                (line.originalIndex === activeIndex
+                  ? activeLineHeightPx
+                  : inactiveLineHeightPx),
+            )}px`,
+            lineHeight: `${
+              measuredSlots[slotIndex]?.lineHeightPx ??
               (line.originalIndex === activeIndex
                 ? activeLineHeightPx
-                : inactiveLineHeightPx))}px`,
-            lineHeight: `${measuredSlots[slotIndex]?.lineHeightPx ??
-              (line.originalIndex === activeIndex
-                ? activeLineHeightPx
-                : inactiveLineHeightPx)}px`,
+                : inactiveLineHeightPx)
+            }px`,
             position: "absolute",
             left: 0,
             right: 0,

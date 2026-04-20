@@ -1,4 +1,6 @@
-function normalizeText(value = '') {
+import { LyricsData } from "./shared/types";
+
+function normalizeText(value: string = ''): string {
   return value
     .toLowerCase()
     .normalize('NFD')
@@ -8,7 +10,7 @@ function normalizeText(value = '') {
     .trim();
 }
 
-function scoreResult(result, trackName, artistName) {
+function scoreResult(result: LyricsData, trackName: string, artistName: string): number {
   const rt = normalizeText(result.trackName || '');
   const ra = normalizeText(result.artistName || '');
   const t = normalizeText(trackName || '');
@@ -24,7 +26,12 @@ function scoreResult(result, trackName, artistName) {
   return score;
 }
 
-async function searchOnce({ trackName, artistName }) {
+interface SearchCandidate {
+  trackName: string;
+  artistName: string;
+}
+
+async function searchOnce({ trackName, artistName }: SearchCandidate): Promise<LyricsData | null> {
   if (!trackName) return null;
 
   const cacheKey =
@@ -32,7 +39,7 @@ async function searchOnce({ trackName, artistName }) {
 
   const cached = await chrome.storage.local.get(cacheKey);
   if (cached[cacheKey] !== undefined) {
-    return cached[cacheKey];
+    return cached[cacheKey] as LyricsData | null;
   }
 
   const url = new URL('https://lrclib.net/api/search');
@@ -47,7 +54,7 @@ async function searchOnce({ trackName, artistName }) {
     throw new Error(`LRCLIB error: ${response.status}`);
   }
 
-  const results = await response.json();
+  const results: LyricsData[] = await response.json();
   const best =
     results
       .slice()
@@ -61,8 +68,15 @@ async function searchOnce({ trackName, artistName }) {
   return best;
 }
 
-async function findLyrics(payload) {
-  const candidates = [
+interface LyricsPayload {
+  trackName: string;
+  artistName: string;
+  channelName: string;
+  originalTitle: string;
+}
+
+async function findLyrics(payload: LyricsPayload): Promise<LyricsData | null> {
+  const candidates: SearchCandidate[] = [
     {
       trackName: payload.trackName,
       artistName: payload.artistName,

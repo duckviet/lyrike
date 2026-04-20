@@ -1,4 +1,5 @@
 import React from "react";
+import { Settings } from "../../shared/types";
 
 const FONTS = [
   {
@@ -16,6 +17,16 @@ const FONTS = [
   { label: "JetBrains Mono", value: "JetBrains Mono, monospace" },
 ];
 
+interface SliderProps {
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  displayValue?: string;
+}
+
 function Slider({
   value,
   onChange,
@@ -24,7 +35,7 @@ function Slider({
   step = 1,
   unit = "",
   displayValue,
-}) {
+}: SliderProps): React.JSX.Element {
   return (
     <div className="yl-slider-row">
       <input
@@ -43,7 +54,12 @@ function Slider({
   );
 }
 
-function Toggle({ checked, onChange }) {
+interface ToggleProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+function Toggle({ checked, onChange }: ToggleProps): React.JSX.Element {
   return (
     <button
       type="button"
@@ -55,8 +71,14 @@ function Toggle({ checked, onChange }) {
   );
 }
 
-export function SettingsPanel({ settings, onChange, onReset }) {
-  const handleChange = (key, value) => {
+interface SettingsPanelProps {
+  settings: Settings;
+  onChange: (settings: Settings) => void;
+  onReset: () => void;
+}
+
+export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProps): React.JSX.Element {
+  const handleChange = <K extends keyof Settings>(key: K, value: Settings[K]): void => {
     onChange({ ...settings, [key]: value });
   };
 
@@ -207,7 +229,7 @@ export function SettingsPanel({ settings, onChange, onReset }) {
         <select
           className="yl-settings-select"
           value={settings.textAlign}
-          onChange={(e) => handleChange("textAlign", e.target.value)}
+          onChange={(e) => handleChange("textAlign", e.target.value as any)}
         >
           <option value="left">Left</option>
           <option value="center">Center</option>

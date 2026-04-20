@@ -1,22 +1,39 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, RefObject } from "react";
 import { layout, prepare } from "@chenglou/pretext";
 import { LyricsLines } from "./LyricsLines";
 import { getVisibleLines } from "../utils/lyricsUtils";
+import {
+  LyricsState,
+  LyricLine,
+  Settings,
+  PreparedLyricLine,
+} from "../../shared/types";
 
 const DEFAULT_FONT_FAMILY =
   "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
 const LINE_HEIGHT_RATIO = 1.6;
 
-function getLineHeightPx(fontSize) {
+function getLineHeightPx(fontSize: number): number {
   return fontSize * LINE_HEIGHT_RATIO;
 }
 
-function safePrepare(text, font) {
+function safePrepare(text: string, font: string): any {
   try {
     return prepare(text, font);
   } catch {
     return null;
   }
+}
+
+interface LyricsContentProps {
+  classPrefix: string;
+  lyricsState: LyricsState;
+  syncedLines: LyricLine[];
+  activeIndex: number;
+  settings: Settings | null;
+  activeLineRef?: RefObject<HTMLDivElement | null>;
+  loadingTextMarginTop?: number;
+  contentWidthPx?: number;
 }
 
 export function LyricsContent({
@@ -28,7 +45,7 @@ export function LyricsContent({
   activeLineRef,
   loadingTextMarginTop,
   contentWidthPx,
-}) {
+}: LyricsContentProps): React.JSX.Element {
   const [fontVersion, setFontVersion] = useState(0);
 
   const hasPlain = !!lyricsState.data?.plainLyrics;
@@ -59,6 +76,7 @@ export function LyricsContent({
 
   // Re-measure when web fonts finish loading.
   useEffect(() => {
+    // @ts-ignore
     if (typeof document === "undefined" || !document.fonts) return;
 
     let cancelled = false;
@@ -69,18 +87,21 @@ export function LyricsContent({
       }
     };
 
+    // @ts-ignore
     document.fonts.ready.then(bump).catch(() => {});
 
+    // @ts-ignore
     document.fonts.addEventListener?.("loadingdone", bump);
 
     return () => {
       cancelled = true;
+      // @ts-ignore
       document.fonts.removeEventListener?.("loadingdone", bump);
     };
   }, [fontFamily]);
 
   // Prepare all synced lines once per text/font configuration.
-  const preparedSyncedLines = useMemo(() => {
+  const preparedSyncedLines = useMemo((): PreparedLyricLine[] => {
     return syncedLines.map((line, originalIndex) => {
       const text = line.text || "♪";
 
@@ -200,7 +221,7 @@ export function LyricsContent({
           className={`${classPrefix}-lines`}
           style={{
             fontFamily,
-            textAlign,
+            textAlign: textAlign as any,
             position: "relative",
             display: "block",
             height: `${Math.ceil(viewportHeight)}px`,
@@ -232,10 +253,10 @@ export function LyricsContent({
           className={`${classPrefix}-lines`}
           style={{
             fontFamily,
-            textAlign,
+            textAlign: textAlign as any,
           }}
         >
-          {lyricsState.data.plainLyrics.split("\n").map((line, index) => (
+          {lyricsState.data.plainLyrics!.split("\n").map((line, index) => (
             <div
               key={index}
               className={`${classPrefix}-line plain`}

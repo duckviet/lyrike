@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { LyricsState, WatchInfo } from "../../shared/types";
 
-function createEmptyLyricsState() {
+function createEmptyLyricsState(): LyricsState {
   return {
     loading: false,
     data: null,
@@ -8,8 +9,8 @@ function createEmptyLyricsState() {
   };
 }
 
-export function useLyricsData(track) {
-  const [lyricsState, setLyricsState] = useState(
+export function useLyricsData(track: WatchInfo | null): LyricsState {
+  const [lyricsState, setLyricsState] = useState<LyricsState>(
     createEmptyLyricsState(),
   );
 
@@ -60,7 +61,7 @@ export function useLyricsData(track) {
             setLyricsState({
               loading: false,
               data: null,
-              error: chrome.runtime.lastError.message,
+              error: chrome.runtime.lastError.message || "Chrome error",
             });
             return;
           }
@@ -81,7 +82,7 @@ export function useLyricsData(track) {
           });
         },
       );
-    } catch (error) {
+    } catch (error: any) {
       if (!cancelled) {
         setLyricsState({
           loading: false,

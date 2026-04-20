@@ -1,7 +1,7 @@
 import React from "react";
 import { CloseIcon, PiPIcon } from "../icons";
 
-function ExpandIcon() {
+function ExpandIcon(): React.JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -20,7 +20,7 @@ function ExpandIcon() {
   );
 }
 
-function MinimizeIcon() {
+function MinimizeIcon(): React.JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -36,6 +36,16 @@ function MinimizeIcon() {
   );
 }
 
+interface WidgetHeaderProps {
+  title: string;
+  artist: string;
+  minimized: boolean;
+  onStartDrag: (event: React.MouseEvent<HTMLElement>) => void;
+  onOpenPiP: () => void;
+  onToggleMinimized: () => void;
+  onHide: () => void;
+}
+
 export function WidgetHeader({
   title,
   artist,
@@ -44,7 +54,7 @@ export function WidgetHeader({
   onOpenPiP,
   onToggleMinimized,
   onHide,
-}) {
+}: WidgetHeaderProps): React.JSX.Element {
   return (
     <div className="yl-header" onMouseDown={onStartDrag}>
       <div className="yl-meta">

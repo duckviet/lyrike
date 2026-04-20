@@ -1,6 +1,13 @@
-import { getPaletteSync } from "colorthief";
+import { getPaletteSync, Color } from "colorthief";
+import { ThemeVars } from "../../shared/types";
 
-function hexToRgb(hex) {
+interface RgbColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+function hexToRgb(hex: string): RgbColor | null {
   const normalized = hex.replace("#", "");
   const value =
     normalized.length === 3
@@ -23,16 +30,16 @@ function hexToRgb(hex) {
   };
 }
 
-function rgbaFromRgb(rgb, alpha) {
+function rgbaFromRgb(rgb: RgbColor, alpha: number): string {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
-function colorObjectToRgb(color) {
+function colorObjectToRgb(color: Color): RgbColor {
   const [r, g, b] = color.array();
   return { r, g, b };
 }
 
-export function createThumbnailThemeFromPalette(palette) {
+export function createThumbnailThemeFromPalette(palette: Color[]): ThemeVars {
   const dominantColor = palette?.[0];
 
   if (!dominantColor) {
@@ -58,13 +65,11 @@ export function createThumbnailThemeFromPalette(palette) {
     "--yl-text-secondary": rgbaFromRgb(textRgb, 0.72),
     "--yl-text-muted": rgbaFromRgb(textRgb, 0.5),
     "--yl-text-accent": rgbaFromRgb(accentRgb, 0.96),
-    // "--yl-border-subtle": rgbaFromRgb(accentRgb, 0.22),
-    // "--yl-border-light": rgbaFromRgb(accentRgb, 0.34),
     "--yl-shadow-glow": `0 0 28px ${rgbaFromRgb(accentRgb, 0.26)}`,
   };
 }
 
-export async function createThumbnailTheme(videoId, enabled = true) {
+export async function createThumbnailTheme(videoId: string | undefined, enabled: boolean = true): Promise<ThemeVars> {
   if (!enabled || !videoId) {
     return {};
   }

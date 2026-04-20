@@ -2,6 +2,16 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LyricsContent } from "./LyricsContent";
 import { PIP_WINDOW_WIDTH } from "../constants/ui";
+import { LyricsState, LyricLine, Settings, ThemeVars } from "../../shared/types";
+
+interface LyricsPiPPortalProps {
+  pipRoot: HTMLElement | null;
+  lyricsState: LyricsState;
+  syncedLines: LyricLine[];
+  activeIndex: number;
+  settings: Settings | null;
+  themeVars: ThemeVars;
+}
 
 export default function LyricsPiPPortal({
   pipRoot,
@@ -10,9 +20,9 @@ export default function LyricsPiPPortal({
   activeIndex,
   settings,
   themeVars,
-}) {
-  const activeLineRef = useRef(null);
-  const bodyRef = useRef(null);
+}: LyricsPiPPortalProps): React.JSX.Element | null {
+  const activeLineRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
   const [contentSize, setContentSize] = useState({
     width: Math.max(80, PIP_WINDOW_WIDTH - 32),
     height: 0,
@@ -64,8 +74,8 @@ export default function LyricsPiPPortal({
       className="pip-shell"
       style={{
         "--pip-bg-opacity": pipBgOpacity,
-        ...themeVars,
-      }}
+        ...Object.fromEntries(Object.entries(themeVars).map(([k, v]) => [k, v])),
+      } as React.CSSProperties}
     >
       <div className="pip-body" ref={bodyRef}>
         <LyricsContent
@@ -76,6 +86,7 @@ export default function LyricsPiPPortal({
           settings={settings}
           activeLineRef={activeLineRef}
           contentWidthPx={contentSize.width}
+          // @ts-ignore
           contentHeightPx={contentSize.height}
         />
       </div>

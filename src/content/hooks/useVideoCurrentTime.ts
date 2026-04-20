@@ -4,7 +4,14 @@ import {
   VIDEO_SYNC_INTERVAL_MS,
 } from "../constants/ui";
 
-function createSyncAnchor(video) {
+interface SyncAnchor {
+  videoTime: number;
+  epochMs: number;
+  paused: boolean;
+  playbackRate: number;
+}
+
+function createSyncAnchor(video: HTMLVideoElement): SyncAnchor {
   return {
     videoTime: video.currentTime || 0,
     epochMs: Date.now(),
@@ -13,13 +20,13 @@ function createSyncAnchor(video) {
   };
 }
 
-function getVideoElement() {
+function getVideoElement(): HTMLVideoElement | null {
   return document.querySelector("video");
 }
 
-export function useVideoCurrentTime(videoId) {
-  const [syncAnchor, setSyncAnchor] = useState(null);
-  const [currentTime, setCurrentTime] = useState(0);
+export function useVideoCurrentTime(videoId?: string | null): number {
+  const [syncAnchor, setSyncAnchor] = useState<SyncAnchor | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(0);
 
   useEffect(() => {
     if (!videoId) {

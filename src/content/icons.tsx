@@ -1,6 +1,6 @@
 import React from "react";
 
-export function LyricsIcon() {
+export function LyricsIcon(): React.JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -19,7 +19,7 @@ export function LyricsIcon() {
   );
 }
 
-export function PiPIcon() {
+export function PiPIcon(): React.JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -38,7 +38,7 @@ export function PiPIcon() {
   );
 }
 
-export function CloseIcon() {
+export function CloseIcon(): React.JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

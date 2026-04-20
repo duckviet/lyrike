@@ -1,4 +1,4 @@
-export function tracePiPBackdropLayers(pipWindow, root) {
+export function tracePiPBackdropLayers(pipWindow: Window, root: HTMLElement | null): void {
   try {
     const doc = pipWindow.document;
     const html = doc.documentElement;
@@ -8,7 +8,7 @@ export function tracePiPBackdropLayers(pipWindow, root) {
     const htmlStyle = pipWindow.getComputedStyle(html);
     const bodyStyle = pipWindow.getComputedStyle(body);
     const rootStyle = root ? pipWindow.getComputedStyle(root) : null;
-    const shellStyle = shell ? pipWindow.getComputedStyle(shell) : null;
+    const shellStyle = shell ? pipWindow.getComputedStyle(shell as Element) : null;
 
     console.groupCollapsed("[Lyrics PiP] Backdrop trace");
     console.table({
@@ -32,7 +32,7 @@ export function tracePiPBackdropLayers(pipWindow, root) {
   }
 }
 
-export function preparePiPDocument(pipWindow, cssText) {
+export function preparePiPDocument(pipWindow: Window, cssText: string): HTMLElement {
   const doc = pipWindow.document;
 
   doc.title = "YouTube Lyrics";

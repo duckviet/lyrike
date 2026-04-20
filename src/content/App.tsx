@@ -17,8 +17,9 @@ import { useVideoCurrentTime } from "./hooks/useVideoCurrentTime";
 import { useWidgetAnimation } from "./hooks/useWidgetAnimation";
 import { useWatchTrack } from "./hooks/useWatchTrack";
 import { createThumbnailTheme } from "./utils/thumbnailTheme";
+import { ThemeVars } from "../shared/types";
 
-export default function App() {
+export default function App(): React.JSX.Element | null {
   useGlobalErrorLogging();
 
   const track = useWatchTrack();
@@ -29,10 +30,10 @@ export default function App() {
 
   const { pipRoot, isPiPOpen, openLyricsPiP, closeLyricsPiP } = useLyricsPiP();
 
-  const [hiddenForVideoId, setHiddenForVideoId] = useState(null);
-  const [minimized, setMinimized] = useState(false);
-  const [activeTab, setActiveTab] = useState("lyrics");
-  const [themeVars, setThemeVars] = useState({});
+  const [hiddenForVideoId, setHiddenForVideoId] = useState<string | null>(null);
+  const [minimized, setMinimized] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>("lyrics");
+  const [themeVars, setThemeVars] = useState<ThemeVars>({});
 
   const widgetWidth = settings?.widgetWidth ?? DEFAULT_WIDGET_WIDTH;
   const borderRadius = settings?.borderRadius ?? DEFAULT_BORDER_RADIUS;

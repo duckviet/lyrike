@@ -4,8 +4,9 @@ import {
   WIDGET_EDGE_MARGIN,
   WIDGET_TOP_OFFSET,
 } from "../constants/ui";
+import { Position } from "../../shared/types";
 
-function clampPosition(position, widgetWidth) {
+function clampPosition(position: Position, widgetWidth: number): Position {
   return {
     x: Math.max(
       WIDGET_EDGE_MARGIN,
@@ -24,7 +25,7 @@ function clampPosition(position, widgetWidth) {
   };
 }
 
-function getInitialPosition(widgetWidth) {
+function getInitialPosition(widgetWidth: number): Position {
   return clampPosition(
     {
       x: window.innerWidth - widgetWidth - WIDGET_EDGE_MARGIN,
@@ -34,12 +35,20 @@ function getInitialPosition(widgetWidth) {
   );
 }
 
-export function useFloatingWidgetPosition(widgetWidth) {
-  const [pos, setPos] = useState(() => getInitialPosition(widgetWidth));
-  const [dragging, setDragging] = useState(null);
+interface DragState {
+  offsetX: number;
+  offsetY: number;
+}
 
-  const startDrag = useCallback((event) => {
-    if (event.target.closest("button")) {
+export function useFloatingWidgetPosition(widgetWidth: number): {
+  pos: Position;
+  startDrag: (event: React.MouseEvent<HTMLElement>) => void;
+} {
+  const [pos, setPos] = useState<Position>(() => getInitialPosition(widgetWidth));
+  const [dragging, setDragging] = useState<DragState | null>(null);
+
+  const startDrag = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest("button")) {
       return;
     }
 
@@ -68,7 +77,7 @@ export function useFloatingWidgetPosition(widgetWidth) {
       return;
     }
 
-    const handleMouseMove = (event) => {
+    const handleMouseMove = (event: MouseEvent) => {
       const nextPos = clampPosition(
         {
           x: event.clientX - dragging.offsetX,

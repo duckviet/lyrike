@@ -1,7 +1,11 @@
 import React from "react";
 import { LyricsIcon } from "../icons";
 
-export function ReopenLyricsButton({ onClick }) {
+interface ReopenLyricsButtonProps {
+  onClick: () => void;
+}
+
+export function ReopenLyricsButton({ onClick }: ReopenLyricsButtonProps): React.JSX.Element {
   return (
     <button
       type="button"

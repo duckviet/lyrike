@@ -9,13 +9,13 @@ export default defineManifest({
   permissions: ["storage"],
   host_permissions: ["https://www.youtube.com/*", "https://lrclib.net/*"],
   background: {
-    service_worker: "src/background.js",
+    service_worker: "src/background.ts",
     type: "module",
   },
   content_scripts: [
     {
       matches: ["https://www.youtube.com/*"],
-      js: ["src/content/main.jsx"],
+      js: ["src/content/main.tsx"],
       css: ["src/content/styles.css"],
       run_at: "document_idle",
     },

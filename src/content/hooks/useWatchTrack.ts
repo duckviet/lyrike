@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { TRACK_POLL_INTERVAL_MS } from "../constants/ui";
-import { getWatchInfo } from "../utils/trackInfo.js";
+import { getWatchInfo } from "../utils/trackInfo";
+import { WatchInfo } from "../../shared/types";
 
-function isSameTrack(prev, next) {
+function isSameTrack(prev: WatchInfo, next: WatchInfo): boolean {
   return (
     prev.videoId === next.videoId &&
     prev.title === next.title &&
@@ -12,8 +13,8 @@ function isSameTrack(prev, next) {
   );
 }
 
-export function useWatchTrack() {
-  const [track, setTrack] = useState(null);
+export function useWatchTrack(): WatchInfo | null {
+  const [track, setTrack] = useState<WatchInfo | null>(null);
 
   useEffect(() => {
     const readTrack = () => {
