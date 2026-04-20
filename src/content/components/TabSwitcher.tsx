@@ -1,6 +1,11 @@
 import React from 'react';
 
-export function TabSwitcher({ activeTab, onChange }) {
+interface TabSwitcherProps {
+  activeTab: string;
+  onChange: (tab: string) => void;
+}
+
+export function TabSwitcher({ activeTab, onChange }: TabSwitcherProps): React.JSX.Element {
   return (
     <div className="yl-tabs">
       <button

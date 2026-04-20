@@ -1,4 +1,6 @@
-function pickText(selectors) {
+import { WatchInfo } from "../../shared/types";
+
+function pickText(selectors: string[]): string {
   for (const selector of selectors) {
     const value = document.querySelector(selector)?.textContent?.trim();
     if (value) return value;
@@ -6,7 +8,7 @@ function pickText(selectors) {
   return "";
 }
 
-function cleanTitle(value = "") {
+function cleanTitle(value: string = ""): string {
   return value
     .replace(
       /\[(official.*?|lyrics?|mv|music video|audio|visualizer|hd|4k)\]/gi,
@@ -20,7 +22,7 @@ function cleanTitle(value = "") {
     .trim();
 }
 
-function inferSongInfo(title, channelName) {
+function inferSongInfo(title: string, channelName: string): { artistName: string; trackName: string } {
   const cleaned = cleanTitle(title);
   const separators = [" - ", " – ", " — ", " | "];
 
@@ -39,7 +41,7 @@ function inferSongInfo(title, channelName) {
   return { artistName: channelName || "", trackName: cleaned };
 }
 
-export function getWatchInfo() {
+export function getWatchInfo(): WatchInfo | null {
   if (!location.pathname.startsWith("/watch")) return null;
 
   const videoId = new URLSearchParams(location.search).get("v");
@@ -57,7 +59,6 @@ export function getWatchInfo() {
     "#owner #channel-name a",
   ]);
 
-  console.log("[Lyrics] Inferred track info:", { title, channelName });
   const { artistName, trackName } = inferSongInfo(title, channelName);
   return { videoId, title, channelName, artistName, trackName };
 }
