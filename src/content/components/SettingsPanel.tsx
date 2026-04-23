@@ -1,21 +1,9 @@
-import React from "react";
-import { Settings } from "../../shared/types";
+import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Settings } from "../shared/types";
+import { FONTS } from "../constants/settings";
 
-const FONTS = [
-  {
-    label: "Inter",
-    value: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-  },
-  {
-    label: "System UI",
-    value: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-  },
-  { label: "Roboto", value: "Roboto, sans-serif" },
-  { label: "Open Sans", value: "Open Sans, sans-serif" },
-  { label: "Montserrat", value: "Montserrat, sans-serif" },
-  { label: "Poppins", value: "Poppins, sans-serif" },
-  { label: "JetBrains Mono", value: "JetBrains Mono, monospace" },
-];
+/* ---------- Reusable primitives ---------- */
 
 interface SliderProps {
   value: number;
@@ -37,7 +25,7 @@ function Slider({
   displayValue,
 }: SliderProps): React.JSX.Element {
   return (
-    <div className="yl-slider-row">
+    <div className="flex items-center gap-[10px]">
       <input
         type="range"
         min={min}
@@ -45,9 +33,9 @@ function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="yl-slider"
+        className="yl-slider flex-1"
       />
-      <span className="yl-slider-value">
+      <span className="min-w-[48px] text-right text-[12px] text-text-secondary tabular-nums">
         {displayValue ?? `${value}${unit}`}
       </span>
     </div>
@@ -58,18 +46,162 @@ interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
 }
-
 function Toggle({ checked, onChange }: ToggleProps): React.JSX.Element {
   return (
     <button
       type="button"
-      className={`yl-toggle ${checked ? "active" : ""}`}
+      role="switch"
+      aria-checked={checked}
+      className={`w-11 h-6 rounded-full cursor-pointer relative transition-colors duration-200 shrink-0 ${
+        checked
+          ? "bg-text-accent"
+          : "bg-bg-tertiary border border-border-subtle"
+      }`}
       onClick={() => onChange(!checked)}
     >
-      <span className="yl-toggle-thumb" />
+      <span
+        className={`absolute top-[1.5px] w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${
+          checked ? "left-5.5" : "left-1"
+        }`}
+      />
     </button>
   );
 }
+/* ---------- Layout helpers ---------- */
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <section className="flex flex-col gap-3 pb-4 border-b border-border-subtle last:border-b-0 last:pb-0">
+      <header className="flex flex-col gap-[2px]">
+        <h3 className="text-[12px] font-semibold uppercase tracking-wider text-text-accent">
+          {title}
+        </h3>
+        {description && (
+          <p className="text-[11px] text-text-secondary leading-snug">
+            {description}
+          </p>
+        )}
+      </header>
+      <div className="flex flex-col gap-3">{children}</div>
+    </section>
+  );
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <label className="text-[13px] text-text-primary">{label}</label>
+        {hint && (
+          <div className="relative group">
+            <div className="rounded-full text-text-secondary text-[12px] flex items-center justify-center cursor-default select-none leading-none">
+              ⓘ
+            </div>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-999">
+              {hint}
+              {/* Arrow */}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-border-subtle" />
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-[-1px] border-4 border-transparent border-t-bg-secondary" />
+            </div>
+          </div>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+function ToggleRow({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-px flex-1 min-w-0">
+        <label className="text-[13px] text-text-primary">{label}</label>
+        {hint && (
+          <span className="text-[11px] text-text-secondary leading-snug">
+            {hint}
+          </span>
+        )}
+      </div>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+function RadioGroup<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string; hint?: string }[];
+  value: T;
+  onChange: (value: T) => void;
+}): React.JSX.Element {
+  return (
+    <div className="flex flex-col gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          className={`flex items-start gap-3 p-3 rounded-md border text-left transition-all duration-150 cursor-pointer ${
+            value === opt.value
+              ? "bg-text-accent/10 border-text-accent"
+              : "bg-bg-tertiary border-border-subtle hover:border-text-muted"
+          }`}
+          onClick={() => onChange(opt.value)}
+        >
+          <div
+            className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-all duration-150 ${
+              value === opt.value
+                ? "border-text-accent"
+                : "border-border-subtle"
+            }`}
+          >
+            {value === opt.value && (
+              <div className="w-2 h-2 rounded-full bg-text-accent" />
+            )}
+          </div>
+          <div className="flex flex-col gap-[1px] min-w-0">
+            <span className="text-[13px] text-text-primary font-medium leading-none">
+              {opt.label}
+            </span>
+            {opt.hint && (
+              <span className="text-[11px] text-text-secondary leading-snug">
+                {opt.hint}
+              </span>
+            )}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- Panel ---------- */
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -77,168 +209,278 @@ interface SettingsPanelProps {
   onReset: () => void;
 }
 
-export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProps): React.JSX.Element {
-  const handleChange = <K extends keyof Settings>(key: K, value: Settings[K]): void => {
+export function SettingsPanel({
+  settings,
+  onChange,
+  onReset,
+}: SettingsPanelProps): React.JSX.Element {
+  const { t, i18n } = useTranslation();
+
+  useEffect(() => {
+    if (settings.language === "auto") {
+      const browserLang = navigator.language.startsWith("vi") ? "vi" : "en";
+      i18n.changeLanguage(browserLang);
+    } else {
+      i18n.changeLanguage(settings.language);
+    }
+  }, [settings.language, i18n]);
+
+  const handleChange = <K extends keyof Settings>(
+    key: K,
+    value: Settings[K],
+  ): void => {
     onChange({ ...settings, [key]: value });
   };
 
+  const selectClass =
+    "w-full p-[8px_10px] bg-bg-tertiary border border-border-subtle rounded-sm text-text-primary text-[13px] cursor-pointer outline-none";
+
   return (
-    <div className="yl-settings">
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Font Family</label>
-        <select
-          className="yl-settings-select"
-          value={settings.fontFamily}
-          onChange={(e) => handleChange("fontFamily", e.target.value)}
+    <div className="flex flex-col gap-4">
+      {/* Typography */}
+      <Section
+        title={t("settings.typography.title")}
+        description={t("settings.typography.desc")}
+      >
+        <Field
+          label={t("settings.typography.font_family.label")}
+          hint={t("settings.typography.font_family.hint")}
         >
-          {FONTS.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-      </div>
+          <select
+            className={selectClass}
+            value={settings.fontFamily}
+            onChange={(e) => handleChange("fontFamily", e.target.value)}
+          >
+            {FONTS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </Field>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Text Size</label>
-        <Slider
-          value={settings.textSize}
-          onChange={(v) => handleChange("textSize", v)}
-          min={12}
-          max={24}
-          unit="px"
-        />
-      </div>
+        <Field
+          label={t("settings.typography.text_size.label")}
+          hint={t("settings.typography.text_size.hint")}
+        >
+          <Slider
+            value={settings.textSize}
+            onChange={(v) => handleChange("textSize", v)}
+            min={12}
+            max={32}
+            unit="px"
+          />
+        </Field>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Active Line Size</label>
-        <Slider
-          value={settings.activeTextSize}
-          onChange={(v) => handleChange("activeTextSize", v)}
-          min={14}
-          max={32}
-          unit="px"
-        />
-      </div>
+        <Field
+          label={t("settings.typography.active_line_size.label")}
+          hint={t("settings.typography.active_line_size.hint")}
+        >
+          <Slider
+            value={settings.activeTextSize}
+            onChange={(v) => handleChange("activeTextSize", v)}
+            min={14}
+            max={40}
+            unit="px"
+          />
+        </Field>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Visible Lines</label>
-        <Slider
-          value={settings.visibleLineCount}
-          onChange={(v) => handleChange("visibleLineCount", v)}
-          min={3}
-          max={15}
-          step={2}
-        />
-      </div>
+        <Field
+          label={t("settings.typography.active_font_weight.label")}
+          hint={t("settings.typography.active_font_weight.hint")}
+        >
+          <Slider
+            value={settings.activeFontWeight}
+            onChange={(v) => handleChange("activeFontWeight", v)}
+            min={400}
+            max={800}
+            step={100}
+          />
+        </Field>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Active Font Weight</label>
-        <Slider
-          value={settings.activeFontWeight}
-          onChange={(v) => handleChange("activeFontWeight", v)}
-          min={400}
-          max={800}
-          step={100}
-        />
-      </div>
+        <Field
+          label={t("settings.typography.text_align.label")}
+          hint={t("settings.typography.text_align.hint")}
+        >
+          <select
+            className={selectClass}
+            value={settings.textAlign}
+            onChange={(e) =>
+              handleChange("textAlign", e.target.value as Settings["textAlign"])
+            }
+          >
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </Field>
+      </Section>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Inactive Opacity</label>
-        <Slider
-          value={Math.round(settings.inactiveOpacity * 100)}
-          onChange={(v) => handleChange("inactiveOpacity", v / 100)}
-          min={10}
-          max={100}
-          unit="%"
-        />
-      </div>
+      {/* Layout */}
+      <Section
+        title={t("settings.layout.title")}
+        description={t("settings.layout.desc")}
+      >
+        <Field
+          label={t("settings.layout.visible_lines.label")}
+          hint={t("settings.layout.visible_lines.hint")}
+        >
+          <Slider
+            value={settings.visibleLineCount}
+            onChange={(v) => handleChange("visibleLineCount", v)}
+            min={3}
+            max={15}
+            step={2}
+          />
+        </Field>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Lyric Glide Duration</label>
-        <Slider
-          value={settings.lyricSlideDurationSec ?? 0.5}
-          onChange={(v) => handleChange("lyricSlideDurationSec", v)}
-          min={0.2}
-          max={0.8}
-          step={0.05}
-          displayValue={`${(settings.lyricSlideDurationSec ?? 0.5).toFixed(2)}s`}
-        />
-      </div>
+        <Field
+          label={t("settings.layout.widget_width.label")}
+          hint={t("settings.layout.widget_width.hint")}
+        >
+          <Slider
+            value={settings.widgetWidth}
+            onChange={(v) => handleChange("widgetWidth", v)}
+            min={280}
+            max={500}
+            step={10}
+            unit="px"
+          />
+        </Field>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Widget Width</label>
-        <Slider
-          value={settings.widgetWidth}
-          onChange={(v) => handleChange("widgetWidth", v)}
-          min={280}
-          max={500}
-          step={10}
-          unit="px"
-        />
-      </div>
+        <Field
+          label={t("settings.layout.border_radius.label")}
+          hint={t("settings.layout.border_radius.hint")}
+        >
+          <Slider
+            value={settings.borderRadius}
+            onChange={(v) => handleChange("borderRadius", v)}
+            min={8}
+            max={32}
+            unit="px"
+          />
+        </Field>
+      </Section>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Border Radius</label>
-        <Slider
-          value={settings.borderRadius}
-          onChange={(v) => handleChange("borderRadius", v)}
-          min={8}
-          max={32}
-          unit="px"
-        />
-      </div>
+      {/* Appearance */}
+      <Section
+        title={t("settings.appearance.title")}
+        description={t("settings.appearance.desc")}
+      >
+        <Field
+          label={t("settings.appearance.inactive_opacity.label")}
+          hint={t("settings.appearance.inactive_opacity.hint")}
+        >
+          <Slider
+            value={Math.round(settings.inactiveOpacity * 100)}
+            onChange={(v) => handleChange("inactiveOpacity", v / 100)}
+            min={10}
+            max={100}
+            unit="%"
+          />
+        </Field>
 
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Background Opacity</label>
-        <Slider
-          value={settings.backgroundOpacity}
-          onChange={(v) => handleChange("backgroundOpacity", v)}
-          min={30}
-          max={100}
-          unit="%"
-        />
-      </div>
+        <Field
+          label={t("settings.appearance.background_opacity.label")}
+          hint={t("settings.appearance.background_opacity.hint")}
+        >
+          <Slider
+            value={settings.backgroundOpacity}
+            onChange={(v) => handleChange("backgroundOpacity", v)}
+            min={30}
+            max={100}
+            unit="%"
+          />
+        </Field>
 
-      <div className="yl-settings-group yl-settings-row">
-        <label className="yl-settings-label">Auto-scroll</label>
-        <Toggle
-          checked={settings.autoScroll}
-          onChange={(v) => handleChange("autoScroll", v)}
-        />
-      </div>
+        <Field
+          label={t("settings.appearance.glide_duration.label")}
+          hint={t("settings.appearance.glide_duration.hint")}
+        >
+          <Slider
+            value={settings.lyricSlideDurationSec ?? 0.5}
+            onChange={(v) => handleChange("lyricSlideDurationSec", v)}
+            min={0.2}
+            max={0.8}
+            step={0.05}
+            displayValue={`${(settings.lyricSlideDurationSec ?? 0.5).toFixed(2)}s`}
+          />
+        </Field>
+      </Section>
 
-      <div className="yl-settings-group yl-settings-row">
-        <label className="yl-settings-label">Hide on PiP</label>
-        <Toggle
+      {/* Picture-in-Picture */}
+      <Section
+        title={t("settings.pip.title")}
+        description={t("settings.pip.desc")}
+      >
+        <ToggleRow
+          label={t("settings.pip.hide_on_pip.label")}
+          hint={t("settings.pip.hide_on_pip.hint")}
           checked={settings.hideFloatingWhenPiPOpen}
           onChange={(v) => handleChange("hideFloatingWhenPiPOpen", v)}
         />
-      </div>
 
-      <div className="yl-settings-group yl-settings-row">
-        <label className="yl-settings-label">PiP dominant color</label>
-        <Toggle
-          checked={settings.usePiPDominantColorTheme}
-          onChange={(v) => handleChange("usePiPDominantColorTheme", v)}
-        />
-      </div>
-
-      <div className="yl-settings-group">
-        <label className="yl-settings-label">Text Align</label>
-        <select
-          className="yl-settings-select"
-          value={settings.textAlign}
-          onChange={(e) => handleChange("textAlign", e.target.value as any)}
+        <Field
+          label={t("settings.pip.background_mode.label")}
+          hint={t("settings.pip.background_mode.hint")}
         >
-          <option value="left">Left</option>
-          <option value="center">Center</option>
-          <option value="right">Right</option>
-        </select>
-      </div>
+          <RadioGroup
+            value={settings.pipBackgroundMode}
+            onChange={(v) => handleChange("pipBackgroundMode", v)}
+            options={[
+              {
+                value: "default",
+                label: t("settings.pip.background_mode.default"),
+                hint: t("settings.pip.background_mode.hint"),
+              },
+              {
+                value: "color",
+                label: t("settings.pip.background_mode.color"),
+                hint: t("settings.pip.dominant_color.hint"),
+              },
+              {
+                value: "thumbnail",
+                label: t("settings.pip.background_mode.thumbnail"),
+                hint: t("settings.pip.thumbnail_bg.hint"),
+              },
+              {
+                value: "video",
+                label: t("settings.pip.background_mode.video"),
+                hint: t("settings.pip.video_bg.hint"),
+              },
+            ]}
+          />
+        </Field>
+      </Section>
 
-      <button className="yl-settings-reset" onClick={onReset}>
-        Reset to Default
+      {/* Language */}
+      <Section
+        title={t("settings.language.title")}
+        description={t("settings.language.desc")}
+      >
+        <Field
+          label={t("settings.language.label")}
+          hint={t("settings.language.hint")}
+        >
+          <select
+            className={selectClass}
+            value={settings.language}
+            onChange={(e) =>
+              handleChange("language", e.target.value as Settings["language"])
+            }
+          >
+            <option value="auto">{t("settings.language.auto")}</option>
+            <option value="vi">{t("settings.language.vi")}</option>
+            <option value="en">{t("settings.language.en")}</option>
+          </select>
+        </Field>
+      </Section>
+
+      <button
+        className="mt-sm p-[8px_16px] border border-border-light rounded-sm bg-transparent text-text-secondary text-[12px] cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary"
+        onClick={onReset}
+      >
+        {t("common.reset_to_default")}
       </button>
     </div>
   );

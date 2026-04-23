@@ -1,0 +1,112 @@
+{
+  "common": {
+    "lyrics": "Lyrics",
+    "settings": "Settings",
+    "reset_to_default": "Reset to Default",
+    "loading_lyrics": "Searching for lyrics...",
+    "no_lyrics": "No lyrics found for this song.",
+    "error_loading": "Error: {{error}}",
+    "no_usable_lyrics": "No usable lyrics found from provider."
+  },
+  "header": {
+    "pip": "Picture-in-Picture",
+    "minimize": "Minimize",
+    "expand": "Expand",
+    "hide": "Hide"
+  },
+  "settings": {
+    "typography": {
+      "title": "Typography",
+      "desc": "Adjust font settings and text size for lyrics.",
+      "font_family": {
+        "label": "Font Family",
+        "hint": "The font used for all lyrics."
+      },
+      "text_size": {
+        "label": "Text Size",
+        "hint": "Size of regular lyric lines."
+      },
+      "active_line_size": {
+        "label": "Active Line Size",
+        "hint": "Size of the currently sung line — should be larger than text size."
+      },
+      "active_font_weight": {
+        "label": "Active Font Weight",
+        "hint": "Thickness of the active line. 600–700 is usually most readable."
+      },
+      "text_align": {
+        "label": "Text Align",
+        "hint": "Alignment of the lyric lines."
+      }
+    },
+    "layout": {
+      "title": "Layout",
+      "desc": "Widget dimensions and number of lines shown simultaneously.",
+      "visible_lines": {
+        "label": "Visible Lines",
+        "hint": "Number of lines visible at once (best as an odd number)."
+      },
+      "widget_width": {
+        "label": "Widget Width",
+        "hint": "The width of the floating lyrics widget."
+      },
+      "border_radius": {
+        "label": "Border Radius",
+        "hint": "The corner roundness of the widget."
+      }
+    },
+    "appearance": {
+      "title": "Appearance",
+      "desc": "Effects, transparency, and movement of lyrics.",
+      "inactive_opacity": {
+        "label": "Inactive Opacity",
+        "hint": "Opacity of non-active lines. Lower values make the active line stand out."
+      },
+      "background_opacity": {
+        "label": "Background Opacity",
+        "hint": "Opacity of the widget background. 100% is fully opaque."
+      },
+      "glide_duration": {
+        "label": "Glide Duration",
+        "hint": "Time taken to transition between lines. Higher = smoother but slower."
+      }
+    },
+    "pip": {
+      "title": "Picture-in-Picture",
+      "desc": "Settings specific to PiP mode.",
+      "hide_on_pip": {
+        "label": "Hide Widget on PiP",
+        "hint": "Hide the floating widget when PiP is open."
+      },
+      "background_mode": {
+        "label": "PiP Background Mode",
+        "hint": "Choose the background style for the PiP window.",
+        "default": "Default (Dark)",
+        "color": "Dominant Color",
+        "thumbnail": "Thumbnail Background",
+        "video": "Video Background"
+      },
+      "dominant_color": {
+        "label": "Thumbnail Theme",
+        "hint": "Use dominant colors from thumbnail as PiP theme."
+      },
+      "thumbnail_bg": {
+        "label": "Thumbnail Background",
+        "hint": "Show video thumbnail as PiP background."
+      },
+      "video_bg": {
+        "label": "Video Background",
+        "hint": "Show live video as PiP background (may consume more resources)."
+      }
+    },
+    "language": {
+      "title": "Language",
+      "desc": "Select the display language for the app.",
+      "label": "Display Language",
+      "hint": "Interface language for controls and settings.",
+      "auto": "System Default",
+      "vi": "Vietnamese",
+      "en": "English"
+    }
+  }
+}

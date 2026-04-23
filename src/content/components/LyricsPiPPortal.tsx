@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LyricsContent } from "./LyricsContent";
-import { PIP_WINDOW_WIDTH } from "../constants/ui";
-import { LyricsState, LyricLine, Settings, ThemeVars } from "../../shared/types";
+import { PIP_WINDOW_HEIGHT, PIP_WINDOW_WIDTH } from "../constants/ui";
+import { LyricsState, LyricLine, Settings, ThemeVars } from "../shared/types";
 
 interface LyricsPiPPortalProps {
   pipRoot: HTMLElement | null;
@@ -11,6 +11,8 @@ interface LyricsPiPPortalProps {
   activeIndex: number;
   settings: Settings | null;
   themeVars: ThemeVars;
+  thumbnail?: string;
+  videoStream?: MediaStream;
 }
 
 export default function LyricsPiPPortal({
@@ -20,12 +22,13 @@ export default function LyricsPiPPortal({
   activeIndex,
   settings,
   themeVars,
+  thumbnail,
+  videoStream,
 }: LyricsPiPPortalProps): React.JSX.Element | null {
-  const activeLineRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const [contentSize, setContentSize] = useState({
     width: Math.max(80, PIP_WINDOW_WIDTH - 32),
-    height: 0,
+    height: Math.max(1, PIP_WINDOW_HEIGHT - 32),
   });
 
   const pipBgOpacity = Math.max(
@@ -37,21 +40,27 @@ export default function LyricsPiPPortal({
     const element = bodyRef.current;
     if (!element) return;
 
+    const ownerWindow = element.ownerDocument.defaultView ?? window;
+
     const updateSize = () => {
-      const styles = window.getComputedStyle(element);
+      const styles = ownerWindow.getComputedStyle(element);
       const paddingX =
         parseFloat(styles.paddingLeft || "0") +
         parseFloat(styles.paddingRight || "0");
+      const paddingY =
+        parseFloat(styles.paddingTop || "0") +
+        parseFloat(styles.paddingBottom || "0");
 
       setContentSize({
         width: Math.max(80, element.clientWidth - paddingX),
-        height: Math.max(0, element.clientHeight),
+        height: Math.max(1, element.clientHeight - paddingY),
       });
     };
 
     updateSize();
 
-    const observer = new ResizeObserver(updateSize);
+    const ResizeObserverCtor = ownerWindow.ResizeObserver ?? ResizeObserver;
+    const observer = new ResizeObserverCtor(updateSize);
     observer.observe(element);
 
     return () => {
@@ -59,34 +68,67 @@ export default function LyricsPiPPortal({
     };
   }, [pipRoot]);
 
-  useEffect(() => {
-    if (activeIndex < 0) return;
-    activeLineRef.current?.scrollIntoView({
-      block: "center",
-      behavior: "smooth",
-    });
-  }, [activeIndex]);
-
   if (!pipRoot) return null;
+
+  const showVideo = !!(settings?.pipBackgroundMode === "video" && videoStream);
+  const showThumbnail = !!(settings?.pipBackgroundMode === "thumbnail" && thumbnail);
 
   return createPortal(
     <div
-      className="pip-shell"
-      style={{
-        "--pip-bg-opacity": pipBgOpacity,
-        ...Object.fromEntries(Object.entries(themeVars).map(([k, v]) => [k, v])),
-      } as React.CSSProperties}
+      className="h-full flex flex-col overflow-hidden relative"
+      style={
+        {
+          "--pip-bg-opacity": showVideo || showThumbnail ? 0 : pipBgOpacity,
+          background:
+            "linear-gradient(to bottom, var(--color-bg-primary, rgba(35, 35, 42, var(--pip-bg-opacity))), var(--color-bg-secondary, rgba(15, 15, 18, var(--pip-bg-opacity))))",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.03), inset 0 0 0 1px rgba(255,255,255,0.08), 0 24px 52px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.14), var(--shadow-glow, 0 0 28px rgba(180,160,255,0.22))",
+          ...themeVars,
+        } as React.CSSProperties
+      }
     >
-      <div className="pip-body" ref={bodyRef}>
+      {showVideo ? (
+        <div className="absolute inset-0 z-below overflow-hidden pointer-events-none">
+          <video
+            ref={(el) => {
+              if (el && el.srcObject !== videoStream) {
+                el.srcObject = videoStream;
+              }
+            }}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover blur-bg opacity-70"
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0, 0, 0, 0.2)" }}
+          />
+        </div>
+      ) : showThumbnail ? (
+        <div className="absolute inset-0 z-below overflow-hidden pointer-events-none">
+          <img
+            src={thumbnail}
+            className="w-full h-full object-cover blur-bg opacity-70"
+            alt=""
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0, 0, 0, 0.2)" }}
+          />
+        </div>
+      ) : null}
+      <div
+        className="h-full p-[14px_14px_16px_18px] relative min-h-0 overflow-y-auto yl-scrollbar"
+        style={{ padding: "14px 14px 16px 18px" }}
+        ref={bodyRef}
+      >
         <LyricsContent
-          classPrefix="pip"
           lyricsState={lyricsState}
           syncedLines={syncedLines}
           activeIndex={activeIndex}
           settings={settings}
-          activeLineRef={activeLineRef}
           contentWidthPx={contentSize.width}
-          // @ts-ignore
           contentHeightPx={contentSize.height}
         />
       </div>

@@ -7,8 +7,8 @@ declare module 'colorthief' {
 }
 
 declare module '@chenglou/pretext' {
-  export function prepare(text: string, font: string): any;
-  export function layout(prepared: any, width: number, lineHeight: number): { height: number };
+  export function prepare(text: string, font: string): unknown;
+  export function layout(prepared: unknown, width: number, lineHeight: number): { height: number };
 }
 
 interface Window {

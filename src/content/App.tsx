@@ -16,8 +16,9 @@ import { useLyricsSettings } from "./hooks/useLyricsSettings";
 import { useVideoCurrentTime } from "./hooks/useVideoCurrentTime";
 import { useWidgetAnimation } from "./hooks/useWidgetAnimation";
 import { useWatchTrack } from "./hooks/useWatchTrack";
+import { useVideoStream } from "./hooks/useVideoStream";
 import { createThumbnailTheme } from "./utils/thumbnailTheme";
-import { ThemeVars } from "../shared/types";
+import { ThemeVars } from "./shared/types";
 
 export default function App(): React.JSX.Element | null {
   useGlobalErrorLogging();
@@ -29,6 +30,10 @@ export default function App(): React.JSX.Element | null {
   const { settings, updateSettings, resetAllSettings } = useLyricsSettings();
 
   const { pipRoot, isPiPOpen, openLyricsPiP, closeLyricsPiP } = useLyricsPiP();
+  const videoStream = useVideoStream(
+    isPiPOpen && settings?.pipBackgroundMode === "video",
+    track?.videoId,
+  );
 
   const [hiddenForVideoId, setHiddenForVideoId] = useState<string | null>(null);
   const [minimized, setMinimized] = useState<boolean>(false);
@@ -69,7 +74,7 @@ export default function App(): React.JSX.Element | null {
   useEffect(() => {
     let cancelled = false;
 
-    const themeEnabled = settings?.usePiPDominantColorTheme ?? true;
+    const themeEnabled = settings?.pipBackgroundMode === "color";
 
     const loadTheme = async () => {
       try {
@@ -94,7 +99,7 @@ export default function App(): React.JSX.Element | null {
     return () => {
       cancelled = true;
     };
-  }, [track?.videoId, settings?.usePiPDominantColorTheme]);
+  }, [track?.videoId, settings?.pipBackgroundMode]);
 
   if (!track?.videoId) {
     return null;
@@ -127,7 +132,6 @@ export default function App(): React.JSX.Element | null {
           onTabChange={setActiveTab}
           onSettingsChange={updateSettings}
           onResetSettings={resetAllSettings}
-          themeVars={themeVars}
         />
       ) : (
         <ReopenLyricsButton onClick={() => setHiddenForVideoId(null)} />
@@ -140,6 +144,8 @@ export default function App(): React.JSX.Element | null {
         activeIndex={activeIndex}
         settings={settings}
         themeVars={themeVars}
+        thumbnail={track.thumbnail}
+        videoStream={videoStream ?? undefined}
       />
     </>
   );

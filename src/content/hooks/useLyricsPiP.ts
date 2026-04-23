@@ -6,6 +6,9 @@ import {
 import { PIP_CSS } from "../pipStyles";
 import { preparePiPDocument } from "../utils/pipWindow";
 
+/**
+ * Manages Picture-in-Picture window for lyrics display.
+ */
 export function useLyricsPiP(): {
   pipRoot: HTMLElement | null;
   isPiPOpen: boolean;

@@ -1,19 +1,11 @@
-import React, { useLayoutEffect, useRef, RefObject } from "react";
+import { useLayoutEffect, useRef, RefObject } from "react";
 import gsap from "gsap";
-import { PreparedLyricLine } from "../../shared/types";
-
-interface MeasuredSlot {
-  slotIndex: number;
-  top: number;
-  measuredHeight: number;
-  lineHeightPx: number;
-}
+import { PreparedLyricLine, MeasuredSlot } from "../shared/types";
 
 interface LyricsLinesProps {
   visibleLines: PreparedLyricLine[];
   measuredSlots: MeasuredSlot[];
   activeIndex: number;
-  classPrefix: string;
   activeLineRef?: RefObject<HTMLDivElement | null>;
   textSize: number;
   activeTextSize: number;
@@ -25,13 +17,13 @@ interface LyricsLinesProps {
   lineGap: number;
   textAlign: string;
   slideDurationSec: number;
+  halfWindow: number;
 }
 
 export function LyricsLines({
   visibleLines,
   measuredSlots,
   activeIndex,
-  classPrefix,
   activeLineRef,
   textSize,
   activeTextSize,
@@ -43,66 +35,87 @@ export function LyricsLines({
   lineGap,
   textAlign,
   slideDurationSec,
+  halfWindow,
 }: LyricsLinesProps): React.JSX.Element {
-  const groupRef = useRef<HTMLDivElement>(null);
-  const previousActiveIndexRef = useRef<number>(activeIndex);
-  const previousActiveTopRef = useRef<number | null>(null);
+  const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Find slot index of the active line (may differ from originalIndex).
+  const activeSlotIndex = visibleLines.findIndex(
+    (l) => l.originalIndex === activeIndex,
+  );
+
+  const prevState = useRef<Map<number, { y: number; opacity: number }>>(
+    new Map(),
+  );
 
   useLayoutEffect(() => {
-    const groupElement = groupRef.current;
+    visibleLines.forEach((line, slotIndex) => {
+      const el = lineRefs.current.get(line.originalIndex);
+      if (!el) return;
 
-    if (!groupElement) return;
+      const slot = measuredSlots[slotIndex];
+      const isActive = line.originalIndex === activeIndex;
 
-    const slotIndex = visibleLines.findIndex(
-      (line) => line.originalIndex === activeIndex,
-    );
+      const top = slot?.top ?? slotIndex * (maxBaseLineHeight + lineGap);
 
-    const nextActiveTop =
-      slotIndex < 0
-        ? null
-        : (measuredSlots[slotIndex]?.top ??
-          slotIndex * (maxBaseLineHeight + lineGap));
-    const previousActiveTop = previousActiveTopRef.current;
-    const previousActiveIndex = previousActiveIndexRef.current;
+      // Distance from active line (in slot units).
+      const distance =
+        activeSlotIndex >= 0 ? Math.abs(slotIndex - activeSlotIndex) : 0;
+      const withinWindow = distance <= halfWindow;
 
-    let fromY = 0;
+      let targetOpacity: number;
+      if (!withinWindow) {
+        targetOpacity = 0;
+      } else if (isActive) {
+        targetOpacity = 1;
+      } else {
+        // Optional: gently fade lines further from the active one.
+        const fadeStep = inactiveOpacity / Math.max(1, halfWindow);
+        targetOpacity = Math.max(
+          0,
+          inactiveOpacity - fadeStep * (distance - 1),
+        );
+      }
 
-    if (
-      previousActiveTop !== null &&
-      nextActiveTop !== null &&
-      previousActiveIndex !== activeIndex
-    ) {
-      // Keep visual continuity, then animate the whole block into the new layout.
-      fromY = previousActiveTop - nextActiveTop;
-    }
+      // Performance: Only animate if values changed
+      const prev = prevState.current.get(line.originalIndex);
+      if (
+        prev &&
+        Math.abs(prev.y - top) < 0.1 &&
+        Math.abs(prev.opacity - targetOpacity) < 0.01
+      ) {
+        return;
+      }
+      prevState.current.set(line.originalIndex, {
+        y: top,
+        opacity: targetOpacity,
+      });
 
-    gsap.killTweensOf(groupElement);
-    gsap.set(groupElement, { y: fromY });
-    gsap.to(groupElement, {
-      y: 0,
-      duration: slideDurationSec,
-      ease: "power3.out",
-      overwrite: "auto",
+      gsap.to(el, {
+        y: top,
+        opacity: targetOpacity,
+        duration: slideDurationSec,
+        ease: "power3.out",
+        overwrite: "auto",
+      });
     });
-
-    previousActiveTopRef.current = nextActiveTop;
-    previousActiveIndexRef.current = activeIndex;
   }, [
     visibleLines,
     measuredSlots,
     activeIndex,
+    activeSlotIndex,
+    inactiveOpacity,
     slideDurationSec,
     maxBaseLineHeight,
     lineGap,
+    halfWindow,
   ]);
 
   useLayoutEffect(() => {
-    const groupElement = groupRef.current;
-
+    const refs = lineRefs.current;
     return () => {
-      if (groupElement) {
-        gsap.killTweensOf(groupElement);
-      }
+      refs.forEach((el) => gsap.killTweensOf(el));
+      refs.clear();
       if (activeLineRef) {
         activeLineRef.current = null;
       }
@@ -110,51 +123,75 @@ export function LyricsLines({
   }, [activeLineRef]);
 
   return (
-    <div ref={groupRef}>
-      {visibleLines.map((line, slotIndex) => (
-        <div
-          key={line.originalIndex}
-          ref={(el) => {
-            if (line.originalIndex === activeIndex && activeLineRef) {
-              activeLineRef.current = el;
-            }
-          }}
-          className={`${classPrefix}-line ${line.originalIndex === activeIndex ? "active" : ""}`}
-          style={{
-            fontSize:
-              line.originalIndex === activeIndex ? activeTextSize : textSize,
-            fontWeight:
-              line.originalIndex === activeIndex ? activeFontWeight : 400,
-            opacity: line.originalIndex === activeIndex ? 1 : inactiveOpacity,
-            minHeight: `${Math.ceil(
-              measuredSlots[slotIndex]?.measuredHeight ??
-                (line.originalIndex === activeIndex
-                  ? activeLineHeightPx
-                  : inactiveLineHeightPx),
-            )}px`,
-            lineHeight: `${
-              measuredSlots[slotIndex]?.lineHeightPx ??
-              (line.originalIndex === activeIndex
-                ? activeLineHeightPx
-                : inactiveLineHeightPx)
-            }px`,
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: 0,
-            transform: `translateY(${measuredSlots[slotIndex]?.top ?? slotIndex * (maxBaseLineHeight + lineGap)}px)`,
-            transformOrigin:
-              textAlign === "right"
-                ? "right center"
-                : textAlign === "center"
-                  ? "center center"
-                  : "left center",
-            willChange: "transform, opacity",
-          }}
-        >
-          {line.__displayText}
-        </div>
-      ))}
+    <div style={{ position: "relative" }}>
+      {visibleLines.map((line, slotIndex) => {
+        const isActive = line.originalIndex === activeIndex;
+        const slot = measuredSlots[slotIndex];
+        const distance =
+          activeSlotIndex >= 0 ? Math.abs(slotIndex - activeSlotIndex) : 0;
+        const withinWindow = distance <= halfWindow;
+
+        return (
+          <div
+            key={line.originalIndex}
+            ref={(el) => {
+              if (el) {
+                lineRefs.current.set(line.originalIndex, el);
+                if (!el.dataset.initialized) {
+                  const initialTop =
+                    slot?.top ?? slotIndex * (maxBaseLineHeight + lineGap);
+                  gsap.set(el, {
+                    y: initialTop,
+                    opacity: withinWindow
+                      ? isActive
+                        ? 1
+                        : inactiveOpacity
+                      : 0,
+                  });
+                  el.dataset.initialized = "1";
+                }
+              } else {
+                lineRefs.current.delete(line.originalIndex);
+              }
+              if (isActive && activeLineRef) {
+                activeLineRef.current = el;
+              }
+            }}
+            className={`text-[15px] leading-[1.6] text-text-muted break-words py-[3px] ${
+              isActive
+                ? "text-text-primary font-semibold [text-shadow:0_0_20px_rgba(255,255,255,0.15)] scale-[1.01] origin-left-center"
+                : ""
+            }`}
+            style={{
+              fontSize: isActive ? activeTextSize : textSize,
+              fontWeight: isActive ? activeFontWeight : 400,
+              minHeight: `${Math.ceil(
+                slot?.measuredHeight ??
+                  (isActive ? activeLineHeightPx : inactiveLineHeightPx),
+              )}px`,
+              lineHeight: `${
+                slot?.lineHeightPx ??
+                (isActive ? activeLineHeightPx : inactiveLineHeightPx)
+              }px`,
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              transformOrigin:
+                textAlign === "right"
+                  ? "right center"
+                  : textAlign === "center"
+                    ? "center center"
+                    : "left center",
+              willChange: "transform, opacity",
+              pointerEvents: withinWindow ? "auto" : "none",
+              // transition: `font-size ${slideDurationSec}s ease`,
+            }}
+          >
+            {line.__displayText}
+          </div>
+        );
+      })}
     </div>
   );
 }

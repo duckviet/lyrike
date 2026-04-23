@@ -1,32 +1,20 @@
 import React, { useEffect, useMemo, useState, RefObject } from "react";
-import { layout, prepare } from "@chenglou/pretext";
+import { useTranslation } from "react-i18next";
 import { LyricsLines } from "./LyricsLines";
-import { getVisibleLines } from "../utils/lyricsUtils";
 import {
   LyricsState,
   LyricLine,
   Settings,
   PreparedLyricLine,
-} from "../../shared/types";
-
-const DEFAULT_FONT_FAMILY =
-  "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-const LINE_HEIGHT_RATIO = 1.6;
-
-function getLineHeightPx(fontSize: number): number {
-  return fontSize * LINE_HEIGHT_RATIO;
-}
-
-function safePrepare(text: string, font: string): any {
-  try {
-    return prepare(text, font);
-  } catch {
-    return null;
-  }
-}
+} from "../shared/types";
+import {
+  getLineHeightPx,
+  safePrepare,
+  measureLineHeight,
+} from "../utils/lyricsUtils";
+import { MeasuredSlot } from "../shared/types";
 
 interface LyricsContentProps {
-  classPrefix: string;
   lyricsState: LyricsState;
   syncedLines: LyricLine[];
   activeIndex: number;
@@ -34,10 +22,10 @@ interface LyricsContentProps {
   activeLineRef?: RefObject<HTMLDivElement | null>;
   loadingTextMarginTop?: number;
   contentWidthPx?: number;
+  contentHeightPx?: number;
 }
 
-export function LyricsContent({
-  classPrefix,
+export const LyricsContent = React.memo(function LyricsContent({
   lyricsState,
   syncedLines,
   activeIndex,
@@ -45,12 +33,16 @@ export function LyricsContent({
   activeLineRef,
   loadingTextMarginTop,
   contentWidthPx,
+  contentHeightPx,
 }: LyricsContentProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [fontVersion, setFontVersion] = useState(0);
 
   const hasPlain = !!lyricsState.data?.plainLyrics;
 
-  const fontFamily = settings?.fontFamily || DEFAULT_FONT_FAMILY;
+  const fontFamily =
+    settings?.fontFamily ||
+    "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
   const textSize = settings?.textSize || 15;
   const activeTextSize = settings?.activeTextSize || 16;
   const activeFontWeight = settings?.activeFontWeight || 600;
@@ -62,7 +54,7 @@ export function LyricsContent({
     Math.max(0.2, Number(settings?.lyricSlideDurationSec ?? 0.5)),
   );
 
-  const lineGap = classPrefix === "pip" ? 8 : 10;
+  const lineGap = 10;
   const maxWidth = Math.max(80, Number(contentWidthPx ?? 320));
 
   const inactiveLineHeightPx = getLineHeightPx(textSize);
@@ -72,39 +64,38 @@ export function LyricsContent({
   const inactiveFont = `normal 400 ${textSize}px ${fontFamily}`;
   const activeFont = `normal ${activeFontWeight} ${activeTextSize}px ${fontFamily}`;
 
-  const bufferedCount = visibleLineCount;
+  const halfWindow = Math.max(0, Math.floor((visibleLineCount - 1) / 2));
 
-  // Re-measure when web fonts finish loading.
   useEffect(() => {
-    // @ts-ignore
     if (typeof document === "undefined" || !document.fonts) return;
-
     let cancelled = false;
+    let scheduled = false;
 
     const bump = () => {
-      if (!cancelled) {
-        setFontVersion((v) => v + 1);
-      }
+      if (cancelled || scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        if (!cancelled) setFontVersion((v) => v + 1);
+      });
     };
 
-    // @ts-ignore
-    document.fonts.ready.then(bump).catch(() => {});
-
-    // @ts-ignore
-    document.fonts.addEventListener?.("loadingdone", bump);
+    Promise.all([
+      document.fonts.load(inactiveFont).catch(() => {}),
+      document.fonts.load(activeFont).catch(() => {}),
+      document.fonts.ready.catch(() => {}),
+    ]).then(() => {
+      if (!cancelled) bump();
+    });
 
     return () => {
       cancelled = true;
-      // @ts-ignore
-      document.fonts.removeEventListener?.("loadingdone", bump);
     };
-  }, [fontFamily]);
+  }, [inactiveFont, activeFont]);
 
-  // Prepare all synced lines once per text/font configuration.
   const preparedSyncedLines = useMemo((): PreparedLyricLine[] => {
     return syncedLines.map((line, originalIndex) => {
       const text = line.text || "♪";
-
       return {
         ...line,
         originalIndex,
@@ -118,148 +109,156 @@ export function LyricsContent({
 
   const hasSynced = preparedSyncedLines.length > 0;
 
-  const visibleLines = useMemo(() => {
-    if (!preparedSyncedLines.length) return [];
-    return getVisibleLines(preparedSyncedLines, activeIndex, bufferedCount);
-  }, [preparedSyncedLines, activeIndex, bufferedCount]);
-
-  const measuredSlots = useMemo(() => {
-    if (!hasSynced || !visibleLines.length) {
-      return [];
-    }
-
-    let cursorY = 0;
-
-    return visibleLines.map((line, slotIndex) => {
-      const isActive = line.originalIndex === activeIndex;
-      const prepared = isActive
-        ? line.__activePrepared
-        : line.__inactivePrepared;
-      const lineHeightPx = isActive ? activeLineHeightPx : inactiveLineHeightPx;
-
-      let measuredHeight = lineHeightPx;
-
-      if (prepared) {
-        try {
-          measuredHeight = Math.max(
-            lineHeightPx,
-            layout(prepared, maxWidth, lineHeightPx).height,
-          );
-        } catch {
-          measuredHeight = lineHeightPx;
-        }
-      }
-
-      const top = cursorY;
-      cursorY += measuredHeight + lineGap;
-
-      return {
-        slotIndex,
-        top,
-        measuredHeight,
-        lineHeightPx,
-      };
-    });
+  const allSlots = useMemo(() => {
+    if (!hasSynced) return [];
+    return preparedSyncedLines.map((line) => ({
+      inactiveHeight: measureLineHeight(
+        line.__inactivePrepared,
+        inactiveLineHeightPx,
+        maxWidth,
+      ),
+      activeHeight: measureLineHeight(
+        line.__activePrepared,
+        activeLineHeightPx,
+        maxWidth,
+      ),
+    }));
   }, [
     hasSynced,
-    visibleLines,
+    preparedSyncedLines,
+    maxWidth,
+    inactiveLineHeightPx,
+    activeLineHeightPx,
+  ]);
+
+  const measuredSlots = useMemo((): MeasuredSlot[] => {
+    let cursorY = 0;
+    return preparedSyncedLines.map((line, i) => {
+      const isActive = line.originalIndex === activeIndex;
+      const height = isActive
+        ? (allSlots[i]?.activeHeight ?? activeLineHeightPx)
+        : (allSlots[i]?.inactiveHeight ?? inactiveLineHeightPx);
+      const lineHeightPx = isActive ? activeLineHeightPx : inactiveLineHeightPx;
+      const top = cursorY;
+      cursorY += height + lineGap;
+      return { slotIndex: i, top, measuredHeight: height, lineHeightPx };
+    });
+  }, [
+    preparedSyncedLines,
+    allSlots,
     activeIndex,
     activeLineHeightPx,
     inactiveLineHeightPx,
-    maxWidth,
     lineGap,
   ]);
 
-  const measuredViewportHeight = measuredSlots.length
-    ? measuredSlots[measuredSlots.length - 1].top +
-      measuredSlots[measuredSlots.length - 1].measuredHeight
-    : 0;
+  const activeSlotIndex = preparedSyncedLines.findIndex(
+    (line) => line.originalIndex === activeIndex,
+  );
+  const activeTop =
+    activeSlotIndex >= 0 ? (measuredSlots[activeSlotIndex]?.top ?? 0) : 0;
+  const activeHeight =
+    activeSlotIndex >= 0
+      ? (measuredSlots[activeSlotIndex]?.measuredHeight ?? activeLineHeightPx)
+      : activeLineHeightPx;
 
   const fallbackViewportHeight =
     Math.max(1, visibleLineCount) * maxBaseLineHeight +
     (Math.max(1, visibleLineCount) - 1) * lineGap;
 
   const viewportHeight = Math.max(
-    fallbackViewportHeight,
-    measuredViewportHeight,
+    1,
+    Number(contentHeightPx) || fallbackViewportHeight,
   );
+
+  const translateY = viewportHeight / 2 - (activeTop + activeHeight / 2);
 
   return (
     <>
       {lyricsState.loading && (
-        <div className={`${classPrefix}-status`}>
-          <div className={`${classPrefix}-loading-dots`}>
-            <span />
-            <span />
-            <span />
+        <div className="flex flex-col items-center justify-center p-lg text-center">
+          <div className="flex gap-1 mb-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-text-accent animate-pulse-slow" />
+            <span className="w-1.5 h-1.5 rounded-full bg-text-accent animate-pulse-slow [animation-delay:0.2s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-text-accent animate-pulse-slow [animation-delay:0.4s]" />
           </div>
           <div
-            className={`${classPrefix}-status-text`}
+            className="text-[14px] leading-normal text-text-muted"
             style={
               loadingTextMarginTop
                 ? { marginTop: loadingTextMarginTop }
                 : undefined
             }
           >
-            Đang tìm lyric...
+            {t("common.loading_lyrics")}
           </div>
         </div>
       )}
 
       {!lyricsState.loading && !lyricsState.data && (
-        <div className={`${classPrefix}-status`}>
-          <div className={`${classPrefix}-status-text`}>
+        <div className="flex flex-col items-center justify-center p-lg text-center">
+          <div className="text-[14px] leading-normal text-text-muted">
             {lyricsState.error
-              ? `Lỗi: ${lyricsState.error}`
-              : "Không có lyric cho bài này."}
+              ? t("common.error_loading", { error: lyricsState.error })
+              : t("common.no_lyrics")}
           </div>
         </div>
       )}
 
       {!lyricsState.loading && lyricsState.data && hasSynced && (
         <div
-          className={`${classPrefix}-lines`}
+          className="flex flex-col gap-2.5"
           style={{
             fontFamily,
-            textAlign: textAlign as any,
+            textAlign,
             position: "relative",
             display: "block",
-            height: `${Math.ceil(viewportHeight)}px`,
+            height: viewportHeight,
+            width: "100%",
             overflow: "hidden",
           }}
         >
-          <LyricsLines
-            visibleLines={visibleLines}
-            measuredSlots={measuredSlots}
-            activeIndex={activeIndex}
-            classPrefix={classPrefix}
-            activeLineRef={activeLineRef}
-            textSize={textSize}
-            activeTextSize={activeTextSize}
-            activeFontWeight={activeFontWeight}
-            inactiveOpacity={inactiveOpacity}
-            inactiveLineHeightPx={inactiveLineHeightPx}
-            activeLineHeightPx={activeLineHeightPx}
-            maxBaseLineHeight={maxBaseLineHeight}
-            lineGap={lineGap}
-            textAlign={textAlign}
-            slideDurationSec={slideDurationSec}
-          />
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              transform: `translateY(${translateY}px)`,
+              transition: `transform ${slideDurationSec}s cubic-bezier(0.22, 1, 0.36, 1)`,
+              willChange: "transform",
+            }}
+          >
+            <LyricsLines
+              visibleLines={preparedSyncedLines}
+              measuredSlots={measuredSlots}
+              activeIndex={activeIndex}
+              activeLineRef={activeLineRef}
+              textSize={textSize}
+              activeTextSize={activeTextSize}
+              activeFontWeight={activeFontWeight}
+              inactiveOpacity={inactiveOpacity}
+              inactiveLineHeightPx={inactiveLineHeightPx}
+              activeLineHeightPx={activeLineHeightPx}
+              maxBaseLineHeight={maxBaseLineHeight}
+              lineGap={lineGap}
+              textAlign={textAlign}
+              slideDurationSec={slideDurationSec}
+              halfWindow={halfWindow}
+            />
+          </div>
         </div>
       )}
 
       {!lyricsState.loading && lyricsState.data && !hasSynced && hasPlain && (
         <div
-          className={`${classPrefix}-lines`}
-          style={{
-            fontFamily,
-            textAlign: textAlign as any,
-          }}
+          className="flex flex-col gap-2.5"
+          style={{ fontFamily, textAlign }}
         >
           {lyricsState.data.plainLyrics!.split("\n").map((line, index) => (
             <div
               key={index}
-              className={`${classPrefix}-line plain`}
+              className="text-[15px] leading-[1.6] text-text-secondary word-break:break-word py-1"
               style={{
                 fontSize: textSize,
                 lineHeight: `${inactiveLineHeightPx}px`,
@@ -272,12 +271,12 @@ export function LyricsContent({
       )}
 
       {!lyricsState.loading && lyricsState.data && !hasSynced && !hasPlain && (
-        <div className={`${classPrefix}-status`}>
-          <div className={`${classPrefix}-status-text`}>
-            Provider không có lyric usable.
+        <div className="flex flex-col items-center justify-center p-lg text-center">
+          <div className="text-[14px] leading-normal text-text-muted">
+            {t("common.no_usable_lyrics")}
           </div>
         </div>
       )}
     </>
   );
-}
+});

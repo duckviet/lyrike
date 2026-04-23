@@ -1,9 +1,9 @@
 import { Settings } from "./types";
 
 export const DEFAULT_SETTINGS: Settings = {
-  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+  fontFamily: "Montserrat, sans-serif",
   textSize: 15,
-  activeTextSize: 16,
+  activeTextSize: 30,
   visibleLineCount: 5,
   activeFontWeight: 600,
   inactiveOpacity: 0.44,
@@ -13,8 +13,9 @@ export const DEFAULT_SETTINGS: Settings = {
   backgroundOpacity: 88,
   autoScroll: true,
   hideFloatingWhenPiPOpen: false,
-  usePiPDominantColorTheme: true,
+  pipBackgroundMode: "default",
   textAlign: "left",
+  language: "vi",
 };
 
 export const SETTINGS_KEY_VALUE = "lyrics_extension_settings";
@@ -57,8 +58,13 @@ export async function resetSettings(): Promise<boolean> {
   }
 }
 
-export function subscribeSettingsChange(callback: (settings: Settings) => void): () => void {
-  const handler = (changes: { [key: string]: chrome.storage.StorageChange }, area: string) => {
+export function subscribeSettingsChange(
+  callback: (settings: Settings) => void,
+): () => void {
+  const handler = (
+    changes: { [key: string]: chrome.storage.StorageChange },
+    area: string,
+  ) => {
     if (area === "local" && changes[SETTINGS_KEY_VALUE]) {
       callback(changes[SETTINGS_KEY_VALUE].newValue as Settings);
     }

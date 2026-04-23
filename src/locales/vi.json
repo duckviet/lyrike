@@ -1,0 +1,112 @@
+{
+  "common": {
+    "lyrics": "Lyrics",
+    "settings": "Settings",
+    "reset_to_default": "Reset to Default",
+    "loading_lyrics": "Đang tìm lyric...",
+    "no_lyrics": "Không có lyric cho bài này.",
+    "error_loading": "Lỗi: {{error}}",
+    "no_usable_lyrics": "Provider không có lyric usable."
+  },
+  "header": {
+    "pip": "Picture-in-Picture",
+    "minimize": "Thu nhỏ",
+    "expand": "Mở rộng",
+    "hide": "Ẩn"
+  },
+  "settings": {
+    "typography": {
+      "title": "Typography",
+      "desc": "Điều chỉnh phông chữ và kích thước hiển thị lời bài hát.",
+      "font_family": {
+        "label": "Phông chữ",
+        "hint": "Phông chữ cho toàn bộ lyrics."
+      },
+      "text_size": {
+        "label": "Kích thước chữ",
+        "hint": "Kích thước các dòng lyric thông thường."
+      },
+      "active_line_size": {
+        "label": "Kích thước dòng đang hát",
+        "hint": "Kích thước dòng đang được hát — nên lớn hơn text size."
+      },
+      "active_font_weight": {
+        "label": "Độ đậm dòng đang hát",
+        "hint": "Độ đậm của dòng đang hát. 600–700 thường dễ đọc nhất."
+      },
+      "text_align": {
+        "label": "Căn lề",
+        "hint": "Căn lề cho các dòng lyric."
+      }
+    },
+    "layout": {
+      "title": "Bố cục",
+      "desc": "Kích thước khung widget và số dòng hiển thị đồng thời.",
+      "visible_lines": {
+        "label": "Số dòng hiển thị",
+        "hint": "Số dòng hiển thị cùng lúc (nên là số lẻ để dòng active nằm giữa)."
+      },
+      "widget_width": {
+        "label": "Chiều rộng widget",
+        "hint": "Chiều rộng của khung lyric nổi."
+      },
+      "border_radius": {
+        "label": "Độ bo góc",
+        "hint": "Độ bo tròn của khung widget."
+      }
+    },
+    "appearance": {
+      "title": "Giao diện",
+      "desc": "Hiệu ứng, độ trong suốt và chuyển động của lyric.",
+      "inactive_opacity": {
+        "label": "Độ mờ dòng phụ",
+        "hint": "Độ mờ của các dòng không active. Giá trị nhỏ giúp dòng active nổi bật hơn."
+      },
+      "background_opacity": {
+        "label": "Độ mờ nền",
+        "hint": "Độ mờ của nền widget. 100% là đục hoàn toàn."
+      },
+      "glide_duration": {
+        "label": "Tốc độ cuộn",
+        "hint": "Thời gian chuyển giữa các dòng. Giá trị lớn = mượt hơn nhưng chậm hơn."
+      }
+    },
+    "pip": {
+      "title": "Picture-in-Picture",
+      "desc": "Cài đặt dành riêng cho chế độ PiP.",
+      "hide_on_pip": {
+        "label": "Ẩn widget khi mở PiP",
+        "hint": "Ẩn widget nổi khi cửa sổ PiP đang mở."
+      },
+      "background_mode": {
+        "label": "Chế độ nền PiP",
+        "hint": "Chọn kiểu hiển thị nền cho cửa sổ PiP.",
+        "default": "Mặc định (Tối)",
+        "color": "Màu chủ đạo (Dominant)",
+        "thumbnail": "Hình nền video (Thumbnail)",
+        "video": "Video đang phát (Live)"
+      },
+      "dominant_color": {
+        "label": "Màu theme theo thumbnail",
+        "hint": "Dùng màu chủ đạo từ thumbnail làm theme cho PiP."
+      },
+      "thumbnail_bg": {
+        "label": "Nền thumbnail",
+        "hint": "Hiển thị thumbnail của video làm nền trong PiP."
+      },
+      "video_bg": {
+        "label": "Nền video",
+        "hint": "Hiển thị video đang phát làm nền trong PiP (có thể tốn tài nguyên)."
+      }
+    },
+    "language": {
+      "title": "Ngôn ngữ",
+      "desc": "Chọn ngôn ngữ hiển thị cho ứng dụng.",
+      "label": "Ngôn ngữ hiển thị",
+      "hint": "Ngôn ngữ của giao diện điều khiển.",
+      "auto": "Theo hệ thống",
+      "vi": "Tiếng Việt",
+      "en": "English"
+    }
+  }
+}

@@ -1,50 +1,86 @@
 import { useEffect, useState } from "react";
-import { TRACK_POLL_INTERVAL_MS } from "../constants/ui";
-import { getWatchInfo } from "../utils/trackInfo";
-import { WatchInfo } from "../../shared/types";
+import { WatchInfo } from "../shared/types";
+import { fetchVideoDetails } from "../utils/videoInfo";
+import { getVideoIdFromURL, inferSongInfo, pickText } from "../utils/trackInfo";
 
-function isSameTrack(prev: WatchInfo, next: WatchInfo): boolean {
-  return (
-    prev.videoId === next.videoId &&
-    prev.title === next.title &&
-    prev.trackName === next.trackName &&
-    prev.artistName === next.artistName &&
-    prev.channelName === next.channelName
-  );
-}
-
+/**
+ * Detects and extracts track info from YouTube watch page.
+ * Uses DOM scraping for immediate data + API for enriched metadata.
+ */
 export function useWatchTrack(): WatchInfo | null {
   const [track, setTrack] = useState<WatchInfo | null>(null);
 
   useEffect(() => {
-    const readTrack = () => {
-      try {
-        const nextTrack = getWatchInfo();
+    let cancelled = false;
 
-        setTrack((prevTrack) => {
-          if (!nextTrack) {
-            return null;
-          }
-
-          if (!prevTrack) {
-            return nextTrack;
-          }
-
-          return isSameTrack(prevTrack, nextTrack) ? prevTrack : nextTrack;
-        });
-      } catch (error) {
-        console.error("[Lyrics] Failed to read watch info:", error);
+    const update = async () => {
+      const videoId = getVideoIdFromURL();
+      if (!videoId) {
         setTrack(null);
+        return;
+      }
+
+      const domTitle = pickText([
+        "ytd-watch-metadata h1 yt-formatted-string",
+        "h1.title yt-formatted-string",
+        "h1.style-scope.ytd-watch-metadata",
+      ]);
+      const domChannel = pickText([
+        "ytd-watch-metadata ytd-channel-name a",
+        "#channel-name a",
+        "#owner #channel-name a",
+      ]);
+
+      try {
+        const details = await fetchVideoDetails(videoId);
+        if (cancelled) return;
+
+        const title = details.title || domTitle;
+        const channelName = details.channelTitle || domChannel;
+        const { artistName, trackName } = inferSongInfo(
+          title,
+          channelName,
+          details.description,
+        );
+
+        setTrack({
+          videoId,
+          title,
+          channelName,
+          artistName,
+          trackName,
+          thumbnail: details.thumbnail,
+        });
+      } catch (err) {
+        console.warn("[useWatchTrack] API fetch failed, using DOM data", err);
       }
     };
 
-    readTrack();
+    update();
 
-    const intervalId = window.setInterval(readTrack, TRACK_POLL_INTERVAL_MS);
+    const observer = new MutationObserver(() => {
+      const newId = getVideoIdFromURL();
+      if (newId !== track?.videoId) update();
+    });
+
+    observer.observe(document.querySelector("title") || document.head, {
+      childList: true,
+      subtree: true,
+    });
 
     return () => {
-      window.clearInterval(intervalId);
+      cancelled = true;
+      observer.disconnect();
     };
+  }, [track?.videoId]);
+
+  useEffect(() => {
+    const onNav = () => {
+      const videoId = getVideoIdFromURL();
+      if (!videoId) setTrack(null);
+    };
+    window.addEventListener("popstate", onNav);
+    return () => window.removeEventListener("popstate", onNav);
   }, []);
 
   return track;

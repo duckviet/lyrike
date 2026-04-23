@@ -1,16 +1,55 @@
-# React + Vite
+# Lyrik - YouTube Lyrics Extension
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Chrome extension hiển thị lyrics nhạc trên YouTube với chế độ Picture-in-Picture.
 
-Currently, two official plugins are available:
+## Tính năng
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Hiển thị lyrics đồng bộ** - Lyrics tự động cuộn theo nhạc
+- **Picture-in-Picture** - Lyrics hiển thị trong cửa sổ PiP
+- **Floating widget** - Lyrics hiển thị dưới dạng widget trên YouTube
+- **Tùy chỉnh giao diện** - Font, kích thước, màu sắc, độ mờ
+- **Auto-scroll** - Tự động cuộn theo bài hát
+- **Video/Thumbnail background** - Background trong PiP mode
 
-## React Compiler
+## Cài đặt
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run build
+```
 
-## Expanding the ESLint configuration
+Load thư mục `dist` vào Chrome:
+1. Mở `chrome://extensions`
+2. Bật "Developer mode"
+3. Click "Load unpacked" → chọn thư mục `dist`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Development
+
+```bash
+npm run dev        # Local dev server
+npm run dev:host  # Dev server accessible qua network
+npm run build     # Build production
+npm run lint      # Check lint + type
+```
+
+## Cấu trúc dự án
+
+```
+src/
+├── content/           # Content script & components
+│   ├── components/  # React components
+│   ├── constants/    # Constants (UI, settings)
+│   ├── hooks/       # Custom hooks
+│   ├── shared/      # Types & settings
+│   └── utils/       # Utilities
+├── background.ts     # Background script
+└── main.tsx         # Entry point
+```
+
+## Dependencies
+
+- React 19
+- Tailwind CSS 4
+- GSAP (animations)
+- @chenglou/pretext (text measuring)
+- ColorThief (color extraction)
