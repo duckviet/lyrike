@@ -5,7 +5,6 @@ export function pickText(selectors: string[]): string {
   }
   return "";
 }
-
 const NOISE_WORDS = [
   "official(?:\\s+\\w+)?",
   "lyrics?",
@@ -25,6 +24,9 @@ const NOISE_WORDS = [
   "performance\\s+video",
   "\\d+(?:st|nd|rd|th)\\s+single",
   "directed\\s+by\\s+[^)\\]|]+",
+  "video\\s+version",
+  "short\\s+version",
+  "full\\s+version",
 ];
 
 const NOISE_PATTERN = NOISE_WORDS.join("|");
@@ -51,17 +53,27 @@ function removeBracketedNoise(value: string): string {
 }
 
 function cleanTrackName(value: string): string {
-  return (
-    value
-      .replace(/[(][^\])]*\b(?:album|ep|single|ost)\b[^\])]*[\])]/gi, "")
-      .replace(/[[(]\s*prod\.?[^\])]*[\])]/gi, "")
-      .replace(/\s*[[(]\s*(?:feat|ft)\.?\s[^\])]*[\])]/gi, "")
-      .replace(/\s+(?:feat|ft)\.?\s.*/i, "")
-      // Remove trailing " - CONTEXT" like " - EM CHƯA 18 OST" after pipe
-      // parse already extracted meaningful segments
-      .replace(/\s+/g, " ")
-      .trim()
+  let result = value;
+
+  // Remove bracketed content containing album/ep/single/ost
+  result = result.replace(
+    /\s*\[[^\]]*\b(?:album|ep|single|ost)\b[^\]]*\]/gi,
+    "",
   );
+  result = result.replace(/\s*\([^)]*\b(?:album|ep|single|ost)\b[^)]*\)/gi, "");
+
+  // Remove (Prod. ...) or [Prod. ...]
+  result = result.replace(/\s*\[\s*prod\.?[^\]]*\]/gi, "");
+  result = result.replace(/\s*\(\s*prod\.?[^)]*\)/gi, "");
+
+  // Remove (feat. X) or [ft. X]
+  result = result.replace(/\s*\[\s*(?:feat|ft)\.?\s[^\]]*\]/gi, "");
+  result = result.replace(/\s*\(\s*(?:feat|ft)\.?\s[^)]*\)/gi, "");
+
+  // Remove trailing "feat./ft. ..."
+  result = result.replace(/\s+(?:feat|ft)\.?\s.*/i, "");
+
+  return result.replace(/\s+/g, " ").trim();
 }
 
 /**

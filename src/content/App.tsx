@@ -31,7 +31,7 @@ export default function App(): React.JSX.Element | null {
 
   const { pipRoot, isPiPOpen, openLyricsPiP, closeLyricsPiP } = useLyricsPiP();
   const videoStream = useVideoStream(
-    isPiPOpen && !!settings?.pipShowVideoBackground,
+    isPiPOpen && settings?.pipBackgroundMode === "video",
     track?.videoId,
   );
 
@@ -74,7 +74,7 @@ export default function App(): React.JSX.Element | null {
   useEffect(() => {
     let cancelled = false;
 
-    const themeEnabled = settings?.usePiPDominantColorTheme ?? true;
+    const themeEnabled = settings?.pipBackgroundMode === "color";
 
     const loadTheme = async () => {
       try {
@@ -99,7 +99,7 @@ export default function App(): React.JSX.Element | null {
     return () => {
       cancelled = true;
     };
-  }, [track?.videoId, settings?.usePiPDominantColorTheme]);
+  }, [track?.videoId, settings?.pipBackgroundMode]);
 
   if (!track?.videoId) {
     return null;
@@ -132,7 +132,6 @@ export default function App(): React.JSX.Element | null {
           onTabChange={setActiveTab}
           onSettingsChange={updateSettings}
           onResetSettings={resetAllSettings}
-          themeVars={themeVars}
         />
       ) : (
         <ReopenLyricsButton onClick={() => setHiddenForVideoId(null)} />

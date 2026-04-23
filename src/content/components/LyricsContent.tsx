@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import { LyricsLines } from "./LyricsLines";
 import {
   LyricsState,
@@ -34,6 +35,7 @@ export const LyricsContent = React.memo(function LyricsContent({
   contentWidthPx,
   contentHeightPx,
 }: LyricsContentProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [fontVersion, setFontVersion] = useState(0);
 
   const hasPlain = !!lyricsState.data?.plainLyrics;
@@ -188,7 +190,7 @@ export const LyricsContent = React.memo(function LyricsContent({
                 : undefined
             }
           >
-            Đang tìm lyric...
+            {t("common.loading_lyrics")}
           </div>
         </div>
       )}
@@ -197,8 +199,8 @@ export const LyricsContent = React.memo(function LyricsContent({
         <div className="flex flex-col items-center justify-center p-lg text-center">
           <div className="text-[14px] leading-normal text-text-muted">
             {lyricsState.error
-              ? `Lỗi: ${lyricsState.error}`
-              : "Không có lyric cho bài này."}
+              ? t("common.error_loading", { error: lyricsState.error })
+              : t("common.no_lyrics")}
           </div>
         </div>
       )}
@@ -211,7 +213,7 @@ export const LyricsContent = React.memo(function LyricsContent({
             textAlign,
             position: "relative",
             display: "block",
-            height: "100%",
+            height: viewportHeight,
             width: "100%",
             overflow: "hidden",
           }}
@@ -250,7 +252,7 @@ export const LyricsContent = React.memo(function LyricsContent({
 
       {!lyricsState.loading && lyricsState.data && !hasSynced && hasPlain && (
         <div
-          className="flex flex-col gap-2.5 h-full overflow-y-auto yl-scrollbar"
+          className="flex flex-col gap-2.5"
           style={{ fontFamily, textAlign }}
         >
           {lyricsState.data.plainLyrics!.split("\n").map((line, index) => (
@@ -271,7 +273,7 @@ export const LyricsContent = React.memo(function LyricsContent({
       {!lyricsState.loading && lyricsState.data && !hasSynced && !hasPlain && (
         <div className="flex flex-col items-center justify-center p-lg text-center">
           <div className="text-[14px] leading-normal text-text-muted">
-            Provider không có lyric usable.
+            {t("common.no_usable_lyrics")}
           </div>
         </div>
       )}

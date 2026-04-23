@@ -32,7 +32,7 @@ interface FloatingLyricsWidgetProps {
   onTabChange: (tab: string) => void;
   onSettingsChange: (settings: Settings) => void;
   onResetSettings: () => void;
-  themeVars: ThemeVars;
+  themeVars?: ThemeVars;
 }
 
 export function FloatingLyricsWidget({
@@ -104,7 +104,7 @@ export function FloatingLyricsWidget({
           borderRadius: `${borderRadius}px`,
           background: `rgba(15, 15, 18, ${backgroundOpacity / 100})`,
           ...Object.fromEntries(
-            Object.entries(themeVars).map(([k, v]) => [k, v]),
+            Object.entries(themeVars || {}).map(([k, v]) => [k, v]),
           ),
         } as React.CSSProperties
       }

@@ -70,21 +70,25 @@ export default function LyricsPiPPortal({
 
   if (!pipRoot) return null;
 
-  const showVideo = !!(settings?.pipShowVideoBackground && videoStream);
-  const showThumbnail = !!(settings?.pipShowThumbnailBackground && thumbnail);
+  const showVideo = !!(settings?.pipBackgroundMode === "video" && videoStream);
+  const showThumbnail = !!(settings?.pipBackgroundMode === "thumbnail" && thumbnail);
 
   return createPortal(
     <div
-      className="h-full flex flex-col overflow-hidden bg-linear-to-b from-[#23232a]/[var(--pip-bg-opacity)] to-[#0f0f12]/[var(--pip-bg-opacity)] shadow-[inset_0_1_0_rgba(255,255,255,0.03),inset_0_0_0_1px_rgba(255,255,255,0.08),0_24px_52px_rgba(0,0,0,0.22),0_0_0_1px_rgba(255,255,255,0.14),0_0_28px_rgba(180,160,255,0.22)]"
+      className="h-full flex flex-col overflow-hidden relative"
       style={
         {
           "--pip-bg-opacity": showVideo || showThumbnail ? 0 : pipBgOpacity,
+          background:
+            "linear-gradient(to bottom, var(--color-bg-primary, rgba(35, 35, 42, var(--pip-bg-opacity))), var(--color-bg-secondary, rgba(15, 15, 18, var(--pip-bg-opacity))))",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.03), inset 0 0 0 1px rgba(255,255,255,0.08), 0 24px 52px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.14), var(--shadow-glow, 0 0 28px rgba(180,160,255,0.22))",
           ...themeVars,
         } as React.CSSProperties
       }
     >
       {showVideo ? (
-        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 z-below overflow-hidden pointer-events-none">
           <video
             ref={(el) => {
               if (el && el.srcObject !== videoStream) {
@@ -94,22 +98,29 @@ export default function LyricsPiPPortal({
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover blur-[20px] scale-110 opacity-70"
+            className="w-full h-full object-cover blur-bg opacity-70"
           />
-          <div className="absolute inset-0 bg-black/20" />
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0, 0, 0, 0.2)" }}
+          />
         </div>
       ) : showThumbnail ? (
-        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 z-below overflow-hidden pointer-events-none">
           <img
             src={thumbnail}
-            className="w-full h-full object-cover blur-[20px] scale-110 opacity-70"
+            className="w-full h-full object-cover blur-bg opacity-70"
             alt=""
           />
-          <div className="absolute inset-0 bg-black/20" />
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0, 0, 0, 0.2)" }}
+          />
         </div>
       ) : null}
       <div
         className="h-full p-[14px_14px_16px_18px] relative min-h-0 overflow-y-auto yl-scrollbar"
+        style={{ padding: "14px 14px 16px 18px" }}
         ref={bodyRef}
       >
         <LyricsContent

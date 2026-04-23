@@ -43,4 +43,19 @@ body {
 ::-webkit-scrollbar-thumb:active {
   background: rgba(255, 255, 255, 0.32);
 }
+
+.h-full { height: 100%; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.overflow-hidden { overflow: hidden; }
+.relative { position: relative; }
+.absolute { position: absolute; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.w-full { width: 100%; }
+.pointer-events-none { pointer-events: none; }
+.object-cover { object-fit: cover; }
+.min-h-0 { min-height: 0; }
+.z-below { z-index: -10; }
+.opacity-70 { opacity: 0.7; }
+.blur-bg { filter: blur(20px); transform: scale(1.1); }
 `;

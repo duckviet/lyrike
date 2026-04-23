@@ -48,10 +48,9 @@ export interface Settings {
   backgroundOpacity: number;
   autoScroll: boolean;
   hideFloatingWhenPiPOpen: boolean;
-  usePiPDominantColorTheme: boolean;
-  pipShowThumbnailBackground: boolean;
-  pipShowVideoBackground: boolean;
+  pipBackgroundMode: "default" | "color" | "thumbnail" | "video";
   textAlign: "left" | "center" | "right";
+  language: "vi" | "en" | "auto";
 }
 
 export interface ThemeVars {

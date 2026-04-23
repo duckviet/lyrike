@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { CloseIcon, PiPIcon } from "../icons";
 
 function ExpandIcon(): React.JSX.Element {
@@ -55,6 +56,8 @@ export function WidgetHeader({
   onToggleMinimized,
   onHide,
 }: WidgetHeaderProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div
       className="flex items-center justify-between gap-md bg-linear-to-b from-white/5 to-transparent border-b border-border-subtle cursor-grab select-none active:cursor-grabbing"
@@ -72,30 +75,30 @@ export function WidgetHeader({
       <div className="flex items-center gap-xs flex-shrink-0">
         <button
           type="button"
-          className="flex items-center justify-center w-8 h-8 border-none rounded-md bg-transparent text-text-secondary cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2]"
+          className="flex items-center justify-center w-10 h-10 border-none rounded-md bg-transparent text-text-secondary cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2]"
           onClick={onOpenPiP}
-          title="Picture-in-Picture"
-          aria-label="Open Picture-in-Picture"
+          title={t("header.pip")}
+          aria-label={t("header.pip")}
         >
           <PiPIcon />
         </button>
 
         <button
           type="button"
-          className="flex items-center justify-center w-8 h-8 border-none rounded-md bg-transparent text-text-secondary cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2]"
+          className="flex items-center justify-center w-10 h-10 border-none rounded-md bg-transparent text-text-secondary cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2]"
           onClick={onToggleMinimized}
-          title={minimized ? "Expand" : "Minimize"}
-          aria-label={minimized ? "Expand widget" : "Minimize widget"}
+          title={minimized ? t("header.expand") : t("header.minimize")}
+          aria-label={minimized ? t("header.expand") : t("header.minimize")}
         >
           {minimized ? <ExpandIcon /> : <MinimizeIcon />}
         </button>
 
         <button
           type="button"
-          className="flex items-center justify-center w-8 h-8 border-none rounded-md bg-transparent text-text-secondary cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2]"
+          className="flex items-center justify-center w-10 h-10 border-none rounded-md bg-transparent text-text-secondary cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2]"
           onClick={onHide}
-          title="Hide"
-          aria-label="Hide widget"
+          title={t("header.hide")}
+          aria-label={t("header.hide")}
         >
           <CloseIcon />
         </button>
