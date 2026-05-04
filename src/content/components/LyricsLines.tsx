@@ -10,6 +10,8 @@ interface LyricsLinesProps {
   textSize: number;
   activeTextSize: number;
   activeFontWeight: number;
+  fontWeight: number;
+  fontStyle: string;
   inactiveOpacity: number;
   inactiveLineHeightPx: number;
   activeLineHeightPx: number;
@@ -28,6 +30,8 @@ export function LyricsLines({
   textSize,
   activeTextSize,
   activeFontWeight,
+  fontWeight,
+  fontStyle,
   inactiveOpacity,
   inactiveLineHeightPx,
   activeLineHeightPx,
@@ -157,14 +161,15 @@ export function LyricsLines({
                 activeLineRef.current = el;
               }
             }}
-            className={`text-[15px] leading-[1.6] text-text-muted break-words py-[3px] ${
+            className={`text-[15px] leading-[1.6] text-text-muted wrap-break-word py-[3px] ${
               isActive
                 ? "text-text-primary font-semibold [text-shadow:0_0_20px_rgba(255,255,255,0.15)] scale-[1.01] origin-left-center"
                 : ""
             }`}
             style={{
               fontSize: isActive ? activeTextSize : textSize,
-              fontWeight: isActive ? activeFontWeight : 400,
+              fontWeight: isActive ? activeFontWeight : fontWeight,
+              fontStyle: fontStyle,
               minHeight: `${Math.ceil(
                 slot?.measuredHeight ??
                   (isActive ? activeLineHeightPx : inactiveLineHeightPx),

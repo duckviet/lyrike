@@ -46,6 +46,8 @@ export const LyricsContent = React.memo(function LyricsContent({
   const textSize = settings?.textSize || 15;
   const activeTextSize = settings?.activeTextSize || 16;
   const activeFontWeight = settings?.activeFontWeight || 600;
+  const fontWeight = settings?.fontWeight || 400;
+  const fontStyle = settings?.fontStyle || "normal";
   const inactiveOpacity = settings?.inactiveOpacity || 0.44;
   const visibleLineCount = settings?.visibleLineCount || 5;
   const textAlign = settings?.textAlign || "left";
@@ -61,8 +63,8 @@ export const LyricsContent = React.memo(function LyricsContent({
   const activeLineHeightPx = getLineHeightPx(activeTextSize);
   const maxBaseLineHeight = Math.max(inactiveLineHeightPx, activeLineHeightPx);
 
-  const inactiveFont = `normal 400 ${textSize}px ${fontFamily}`;
-  const activeFont = `normal ${activeFontWeight} ${activeTextSize}px ${fontFamily}`;
+  const inactiveFont = `${fontStyle} ${fontWeight} ${textSize}px ${fontFamily}`;
+  const activeFont = `${fontStyle} ${activeFontWeight} ${activeTextSize}px ${fontFamily}`;
 
   const halfWindow = Math.max(0, Math.floor((visibleLineCount - 1) / 2));
 
@@ -237,6 +239,8 @@ export const LyricsContent = React.memo(function LyricsContent({
               textSize={textSize}
               activeTextSize={activeTextSize}
               activeFontWeight={activeFontWeight}
+              fontWeight={fontWeight}
+              fontStyle={fontStyle}
               inactiveOpacity={inactiveOpacity}
               inactiveLineHeightPx={inactiveLineHeightPx}
               activeLineHeightPx={activeLineHeightPx}

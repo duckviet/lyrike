@@ -5,28 +5,36 @@ export function preparePiPDocument(
   const doc = pipWindow.document;
 
   doc.title = "YouTube Lyrics";
+
   doc.documentElement.style.background = "transparent";
+  doc.documentElement.style.width = "100%";
+  doc.documentElement.style.height = "100%";
+
   doc.body.style.margin = "0";
   doc.body.style.background = "transparent";
+  doc.body.style.width = "100%";
+  doc.body.style.height = "100%";
+  doc.body.style.overflow = "hidden";
 
-  [...document.styleSheets].forEach((styleSheet) => {
-    try {
-      if (styleSheet.cssRules) {
-        const newStyleEl = doc.createElement("style");
-        for (const rule of styleSheet.cssRules) {
-          newStyleEl.appendChild(doc.createTextNode(rule.cssText));
-        }
-        doc.head.appendChild(newStyleEl);
-      } else if (styleSheet.href) {
-        const newLinkEl = doc.createElement("link");
-        newLinkEl.rel = "stylesheet";
-        newLinkEl.href = styleSheet.href;
-        doc.head.appendChild(newLinkEl);
-      }
-    } catch (e) {
-      console.warn("[Lyrics PiP] Could not copy stylesheet:", e);
+  const baseStyleEl = doc.createElement("style");
+  baseStyleEl.textContent = `
+    html,
+    body,
+    #ytl-pip-root {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: transparent;
     }
-  });
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+  `;
+  doc.head.appendChild(baseStyleEl);
 
   const styleEl = doc.createElement("style");
   styleEl.textContent = cssText;

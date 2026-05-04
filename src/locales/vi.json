@@ -34,6 +34,14 @@
         "label": "Độ đậm dòng đang hát",
         "hint": "Độ đậm của dòng đang hát. 600–700 thường dễ đọc nhất."
       },
+      "base_font_weight": {
+        "label": "Độ đậm dòng phụ",
+        "hint": "Độ đậm của các dòng không active."
+      },
+      "font_style": {
+        "label": "Kiểu phông",
+        "hint": "Kiểu chữ (thông thường hoặc in nghiêng)."
+      },
       "text_align": {
         "label": "Căn lề",
         "hint": "Căn lề cho các dòng lyric."

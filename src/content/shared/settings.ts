@@ -2,20 +2,22 @@ import { Settings } from "./types";
 
 export const DEFAULT_SETTINGS: Settings = {
   fontFamily: "Montserrat, sans-serif",
-  textSize: 15,
+  textSize: 16,
   activeTextSize: 30,
   visibleLineCount: 5,
-  activeFontWeight: 600,
+  activeFontWeight: 700,
+  fontWeight: 400,
+  fontStyle: "italic",
   inactiveOpacity: 0.44,
-  lyricSlideDurationSec: 0.5,
+  lyricSlideDurationSec: 0.4,
   widgetWidth: 360,
   borderRadius: 20,
   backgroundOpacity: 88,
   autoScroll: true,
   hideFloatingWhenPiPOpen: false,
-  pipBackgroundMode: "default",
+  pipBackgroundMode: "video",
   textAlign: "left",
-  language: "vi",
+  language: "en",
 };
 
 export const SETTINGS_KEY_VALUE = "lyrics_extension_settings";
@@ -27,8 +29,14 @@ export function getDefaultSettings(): Settings {
 export async function loadSettings(): Promise<Settings> {
   try {
     const result = await chrome.storage.local.get(SETTINGS_KEY_VALUE);
-    if (result[SETTINGS_KEY_VALUE]) {
-      return { ...DEFAULT_SETTINGS, ...result[SETTINGS_KEY_VALUE] };
+    const storedSettings = result[SETTINGS_KEY_VALUE];
+
+    if (storedSettings && typeof storedSettings === "object") {
+      // Merge stored settings with defaults to ensure all new fields exist
+      return {
+        ...DEFAULT_SETTINGS,
+        ...storedSettings,
+      };
     }
   } catch (e) {
     console.error("[Lyrics] Failed to load settings:", e);

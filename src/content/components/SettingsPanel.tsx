@@ -235,6 +235,34 @@ export function SettingsPanel({
   const selectClass =
     "w-full p-[8px_10px] bg-bg-tertiary border border-border-subtle rounded-sm text-text-primary text-[13px] cursor-pointer outline-none";
 
+  const selectedFont =
+    FONTS.find((f) => f.value === settings.fontFamily) || FONTS[0];
+
+  const handleFontFamilyChange = (value: string) => {
+    const newFont = FONTS.find((f) => f.value === value) || FONTS[0];
+    const updates: Partial<Settings> = { fontFamily: value };
+
+    // Clamp weights to new font's range
+    const minW = newFont.minWeight ?? Math.min(...newFont.weights);
+    const maxW = newFont.maxWeight ?? Math.max(...newFont.weights);
+
+    if (settings.activeFontWeight < minW) updates.activeFontWeight = minW;
+    if (settings.activeFontWeight > maxW) updates.activeFontWeight = maxW;
+    if (settings.fontWeight < minW) updates.fontWeight = minW;
+    if (settings.fontWeight > maxW) updates.fontWeight = maxW;
+
+    // Reset italic if not supported
+    if (!newFont.supportsItalic && settings.fontStyle === "italic") {
+      updates.fontStyle = "normal";
+    }
+
+    onChange({ ...settings, ...updates });
+  };
+
+  const minWeight = selectedFont.minWeight ?? Math.min(...selectedFont.weights);
+  const maxWeight = selectedFont.maxWeight ?? Math.max(...selectedFont.weights);
+  const weightStep = selectedFont.isVariable ? 10 : 100;
+
   return (
     <div className="flex flex-col gap-4">
       {/* Typography */}
@@ -249,7 +277,7 @@ export function SettingsPanel({
           <select
             className={selectClass}
             value={settings.fontFamily}
-            onChange={(e) => handleChange("fontFamily", e.target.value)}
+            onChange={(e) => handleFontFamilyChange(e.target.value)}
           >
             {FONTS.map((f) => (
               <option key={f.value} value={f.value}>
@@ -285,18 +313,56 @@ export function SettingsPanel({
           />
         </Field>
 
-        <Field
-          label={t("settings.typography.active_font_weight.label")}
-          hint={t("settings.typography.active_font_weight.hint")}
-        >
-          <Slider
-            value={settings.activeFontWeight}
-            onChange={(v) => handleChange("activeFontWeight", v)}
-            min={400}
-            max={800}
-            step={100}
-          />
-        </Field>
+        {selectedFont.weights.length > 1 && (
+          <>
+            <Field
+              label={t("settings.typography.active_font_weight.label")}
+              hint={t("settings.typography.active_font_weight.hint")}
+            >
+              <Slider
+                value={settings.activeFontWeight}
+                onChange={(v) => handleChange("activeFontWeight", v)}
+                min={minWeight}
+                max={maxWeight}
+                step={weightStep}
+              />
+            </Field>
+
+            <Field
+              label={t("settings.typography.base_font_weight.label")}
+              hint={t("settings.typography.base_font_weight.hint")}
+            >
+              <Slider
+                value={settings.fontWeight}
+                onChange={(v) => handleChange("fontWeight", v)}
+                min={minWeight}
+                max={maxWeight}
+                step={weightStep}
+              />
+            </Field>
+          </>
+        )}
+
+        {selectedFont.supportsItalic && (
+          <Field
+            label={t("settings.typography.font_style.label")}
+            hint={t("settings.typography.font_style.hint")}
+          >
+            <select
+              className={selectClass}
+              value={settings.fontStyle}
+              onChange={(e) =>
+                handleChange(
+                  "fontStyle",
+                  e.target.value as Settings["fontStyle"],
+                )
+              }
+            >
+              <option value="normal">Normal</option>
+              <option value="italic">Italic</option>
+            </select>
+          </Field>
+        )}
 
         <Field
           label={t("settings.typography.text_align.label")}

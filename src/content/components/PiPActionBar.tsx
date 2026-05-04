@@ -1,0 +1,320 @@
+import React, { useEffect, useRef } from "react";
+import gsap from "gsap";
+
+interface PiPActionBarProps {
+  isVisible: boolean;
+  artist?: string;
+  title?: string;
+  playerControls: {
+    isPaused: boolean;
+    volume: number;
+    offset: number;
+    togglePlay: () => void;
+    nextTrack: () => void;
+    prevTrack: () => void;
+    setVolume: (v: number) => void;
+    adjustOffset: (d: number) => void;
+  };
+}
+
+function normalizeText(value: string = ""): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export const PiPActionBar: React.FC<PiPActionBarProps> = ({
+  isVisible,
+  artist,
+  title,
+  playerControls,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce save offset (10s)
+  useEffect(() => {
+    if (!artist || !title) return;
+
+    // Clear previous timeout if offset changed within 10s
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      const cacheKey = `lyrics:${normalizeText(artist)}:${normalizeText(title)}`;
+      try {
+        const result = await chrome.storage.local.get(cacheKey);
+        const cachedValue = result[cacheKey];
+
+        let id: string | number | null = null;
+        if (typeof cachedValue === "string") {
+          id = cachedValue.split("#")[0];
+        } else if (typeof cachedValue === "number") {
+          id = cachedValue;
+        }
+
+        if (id) {
+          const offsetMs = Math.round(playerControls.offset * 1000);
+          await chrome.storage.local.set({
+            [cacheKey]: `${id}#${offsetMs}`,
+          });
+          // console.log(`[Lyrics] Saved offset: ${offsetMs} for ${cacheKey}`);
+        }
+      } catch (err) {
+        console.error("[Lyrics] Failed to save offset debounce:", err);
+      }
+    }, 10000); // 10 seconds
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [playerControls.offset, artist, title]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    if (isVisible) {
+      gsap.to(containerRef.current, {
+        opacity: 1,
+        y: 0,
+        duration: 0.4,
+        ease: "power2.out",
+        pointerEvents: "auto",
+      });
+    } else {
+      gsap.to(containerRef.current, {
+        opacity: 0,
+        y: 20,
+        duration: 0.3,
+        ease: "power2.in",
+        pointerEvents: "none",
+      });
+    }
+  }, [isVisible]);
+
+  return (
+    <>
+      <style>{`
+        .pip-volume-range {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 64px;
+          height: 3px;
+          background: rgba(255,255,255,0.25);
+          border-radius: 2px;
+          cursor: pointer;
+        }
+        .pip-volume-range::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: white;
+          cursor: pointer;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+        .pip-volume-range::-moz-range-thumb {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: white;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+      `}</style>
+      <div
+        ref={containerRef}
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          opacity: 0,
+          transform: "translateY(20px)",
+          pointerEvents: "none",
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.0) 100%)",
+          padding: "20px 12px 8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "6px",
+        }}
+      >
+        {/* Prev */}
+        <button
+          onClick={playerControls.prevTrack}
+          style={btnStyle}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(255,255,255,0.2)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "rgba(255,255,255,0.12)")
+          }
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" />
+          </svg>
+        </button>
+
+        {/* Play/Pause */}
+        <button
+          onClick={playerControls.togglePlay}
+          style={{
+            ...btnStyle,
+            background: "rgba(255,255,255,0.95)",
+            color: "#000",
+            width: 30,
+            height: 30,
+            borderRadius: "50%",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.transform = "scale(1.05)")
+          }
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+        >
+          {playerControls.isPaused ? (
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+          )}
+        </button>
+
+        {/* Next */}
+        <button
+          onClick={playerControls.nextTrack}
+          style={btnStyle}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(255,255,255,0.2)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "rgba(255,255,255,0.12)")
+          }
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+          </svg>
+        </button>
+
+        <div style={dividerStyle} />
+
+        {/* Volume */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="currentColor"
+            style={{ color: "rgba(255,255,255,0.5)", flexShrink: 0 }}
+          >
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+          </svg>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={playerControls.volume}
+            onChange={(e) =>
+              playerControls.setVolume(parseFloat(e.target.value))
+            }
+            className="pip-volume-range"
+            style={{ accentColor: "white", cursor: "pointer" }}
+          />
+        </div>
+
+        <div style={dividerStyle} />
+
+        {/* Offset */}
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <button
+            onClick={() => playerControls.adjustOffset(-0.5)}
+            style={offsetBtnStyle}
+            title="Sớm hơn 0.5s"
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "rgba(255,255,255,0.2)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "rgba(255,255,255,0.1)")
+            }
+          >
+            -0.5s
+          </button>
+          <span
+            style={{
+              fontSize: 9,
+              fontFamily: "monospace",
+              color: "rgba(255,255,255,0.4)",
+              minWidth: 32,
+              textAlign: "center",
+            }}
+          >
+            {playerControls.offset > 0 ? "+" : ""}
+            {playerControls.offset.toFixed(1)}s
+          </span>
+          <button
+            onClick={() => playerControls.adjustOffset(0.5)}
+            style={offsetBtnStyle}
+            title="Trễ hơn 0.5s"
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "rgba(255,255,255,0.2)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "rgba(255,255,255,0.1)")
+            }
+          >
+            +0.5s
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+const btnStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 24,
+  height: 24,
+  borderRadius: "50%",
+  background: "rgba(255,255,255,0.12)",
+  color: "rgba(255,255,255,0.9)",
+  border: "none",
+  cursor: "pointer",
+  transition: "all 0.2s ease",
+  flexShrink: 0,
+};
+
+const dividerStyle: React.CSSProperties = {
+  width: 1,
+  height: 14,
+  background: "rgba(255,255,255,0.15)",
+  margin: "0 2px",
+  flexShrink: 0,
+};
+
+const offsetBtnStyle: React.CSSProperties = {
+  padding: "2px 6px",
+  borderRadius: 4,
+  background: "rgba(255,255,255,0.1)",
+  color: "rgba(255,255,255,0.8)",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 9,
+  fontWeight: "bold",
+  transition: "background 0.2s ease",
+};

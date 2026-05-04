@@ -26,7 +26,12 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
   }
 
   useEffect(() => {
-    if (!track?.videoId || !track?.trackName) {
+    if (!track?.videoId) {
+      return;
+    }
+
+    const queryTrackName = (track.trackName || track.title || "").trim();
+    if (!queryTrackName) {
       return;
     }
 
@@ -60,7 +65,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
         {
           type: "FETCH_LYRICS",
           payload: {
-            trackName: track.trackName,
+            trackName: queryTrackName,
             artistName: track.artistName,
             channelName: track.channelName,
             originalTitle: track.title,
@@ -113,9 +118,9 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
   }, [
     track?.videoId,
     track?.trackName,
+    track?.title,
     track?.artistName,
     track?.channelName,
-    track?.title,
   ]);
 
   return lyricsState;

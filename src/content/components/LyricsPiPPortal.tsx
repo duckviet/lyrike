@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { LyricsContent } from "./LyricsContent";
 import { PIP_WINDOW_HEIGHT, PIP_WINDOW_WIDTH } from "../constants/ui";
 import { LyricsState, LyricLine, Settings, ThemeVars } from "../shared/types";
+import { PiPActionBar } from "./PiPActionBar";
+import { usePiPHover } from "../hooks/usePiPHover";
 
 interface LyricsPiPPortalProps {
   pipRoot: HTMLElement | null;
@@ -12,7 +14,19 @@ interface LyricsPiPPortalProps {
   settings: Settings | null;
   themeVars: ThemeVars;
   thumbnail?: string;
+  artist?: string;
+  title?: string;
   videoStream?: MediaStream;
+  playerControls: {
+    isPaused: boolean;
+    volume: number;
+    offset: number;
+    togglePlay: () => void;
+    nextTrack: () => void;
+    prevTrack: () => void;
+    setVolume: (v: number) => void;
+    adjustOffset: (d: number) => void;
+  };
 }
 
 export default function LyricsPiPPortal({
@@ -23,9 +37,29 @@ export default function LyricsPiPPortal({
   settings,
   themeVars,
   thumbnail,
+  artist,
+  title,
   videoStream,
+  playerControls,
 }: LyricsPiPPortalProps): React.JSX.Element | null {
+  const { isHovered, showHover, startAutoHideTimer } = usePiPHover(pipRoot);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = containerRef.current;
+    if (!el) return;
+    // e.clientY trong PiP window là toạ độ tính từ top của PiP viewport
+    const fromBottom = el.clientHeight - e.clientY;
+
+    if (fromBottom <= 32) {
+      showHover();
+    } else if (isHovered) {
+      // Đang hiện mà di ra khỏi vùng đáy → hẹn giờ ẩn
+      startAutoHideTimer(800);
+    }
+  };
+
   const [contentSize, setContentSize] = useState({
     width: Math.max(80, PIP_WINDOW_WIDTH - 32),
     height: Math.max(1, PIP_WINDOW_HEIGHT - 32),
@@ -52,7 +86,7 @@ export default function LyricsPiPPortal({
         parseFloat(styles.paddingBottom || "0");
 
       setContentSize({
-        width: Math.max(80, element.clientWidth - paddingX),
+        width: Math.max(50, element.clientWidth - paddingX),
         height: Math.max(1, element.clientHeight - paddingY),
       });
     };
@@ -71,11 +105,15 @@ export default function LyricsPiPPortal({
   if (!pipRoot) return null;
 
   const showVideo = !!(settings?.pipBackgroundMode === "video" && videoStream);
-  const showThumbnail = !!(settings?.pipBackgroundMode === "thumbnail" && thumbnail);
+  const showThumbnail = !!(
+    settings?.pipBackgroundMode === "thumbnail" && thumbnail
+  );
 
   return createPortal(
     <div
-      className="h-full flex flex-col overflow-hidden relative"
+      ref={containerRef}
+      className="h-full flex flex-col overflow-hidden relative group"
+      onMouseMove={handleMouseMove}
       style={
         {
           "--pip-bg-opacity": showVideo || showThumbnail ? 0 : pipBgOpacity,
@@ -91,8 +129,10 @@ export default function LyricsPiPPortal({
         <div className="absolute inset-0 z-below overflow-hidden pointer-events-none">
           <video
             ref={(el) => {
-              if (el && el.srcObject !== videoStream) {
-                el.srcObject = videoStream;
+              if (!el) return;
+
+              if (el.srcObject !== videoStream) {
+                el.srcObject = videoStream ?? null;
               }
             }}
             autoPlay
@@ -100,6 +140,7 @@ export default function LyricsPiPPortal({
             playsInline
             className="w-full h-full object-cover blur-bg opacity-70"
           />
+
           <div
             className="absolute inset-0"
             style={{ background: "rgba(0, 0, 0, 0.2)" }}
@@ -120,7 +161,11 @@ export default function LyricsPiPPortal({
       ) : null}
       <div
         className="h-full p-[14px_14px_16px_18px] relative min-h-0 overflow-y-auto yl-scrollbar"
-        style={{ padding: "14px 14px 16px 18px" }}
+        style={{
+          padding: "14px 14px 16px 18px",
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}
         ref={bodyRef}
       >
         <LyricsContent
@@ -132,6 +177,13 @@ export default function LyricsPiPPortal({
           contentHeightPx={contentSize.height}
         />
       </div>
+
+      <PiPActionBar
+        isVisible={isHovered}
+        playerControls={playerControls}
+        artist={artist}
+        title={title}
+      />
     </div>,
     pipRoot,
   );

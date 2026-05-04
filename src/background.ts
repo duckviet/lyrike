@@ -37,6 +37,21 @@ interface SearchCandidate {
   artistName: string;
 }
 
+async function fetchLyricsById(id: number): Promise<LyricsData | null> {
+  const response = await fetch(`https://lrclib.net/api/get/${id}`);
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`LRCLIB get-by-id error: ${response.status}`);
+  }
+
+  const result: LyricsData = await response.json();
+  return result;
+}
+
 async function searchOnce({
   trackName,
   artistName,
@@ -46,8 +61,44 @@ async function searchOnce({
   const cacheKey = `lyrics:${normalizeText(artistName)}:${normalizeText(trackName)}`;
 
   const cached = await chrome.storage.local.get(cacheKey);
-  if (cached[cacheKey] !== undefined) {
-    return cached[cacheKey] as LyricsData | null;
+  const cachedValue = cached[cacheKey] as number | string | LyricsData | undefined;
+
+  if (cachedValue !== undefined) {
+    // New format: cache only LRCLIB id.
+    if (typeof cachedValue === "number" || typeof cachedValue === "string") {
+      let id: number;
+      let offsetMs: number = 0;
+      if (typeof cachedValue === "string") {
+        const parts = cachedValue.split("#");
+        id = parseInt(parts[0], 10);
+        if (parts[1]) {
+          offsetMs = parseInt(parts[1], 10) || 0;
+        }
+      } else {
+        id = cachedValue;
+      }
+
+      const fromId = await fetchLyricsById(id);
+      if (fromId) {
+        return { ...fromId, offsetMs };
+      }
+      await chrome.storage.local.remove(cacheKey);
+    } else if (typeof cachedValue === "object") {
+      // Backward-compatible migration: old cache stored full lyrics payload.
+      const legacyId = cachedValue.id;
+
+      if (typeof legacyId === "number") {
+        // Save as string with 0 offset by default if it was legacy object
+        await chrome.storage.local.set({ [cacheKey]: `${legacyId}#0` });
+        const fromId = await fetchLyricsById(legacyId);
+        if (fromId) {
+          return fromId;
+        }
+        await chrome.storage.local.remove(cacheKey);
+      } else {
+        await chrome.storage.local.remove(cacheKey);
+      }
+    }
   }
 
   const url = new URL("https://lrclib.net/api/search");
@@ -65,8 +116,8 @@ async function searchOnce({
 
   const results: LyricsData[] = await response.json();
 
-  console.log(url);
-  console.log(results);
+  // console.log(url);
+  // console.log(results);
   const best =
     results
       .slice()
@@ -76,7 +127,11 @@ async function searchOnce({
           scoreResult(a, trackName, artistName),
       )[0] || null;
 
-  await chrome.storage.local.set({ [cacheKey]: best });
+  if (typeof best?.id === "number") {
+    // Initial save with 0 offset
+    await chrome.storage.local.set({ [cacheKey]: `${best.id}#0` });
+  }
+
   return best;
 }
 
@@ -122,10 +177,10 @@ async function findLyrics(payload: LyricsPayload): Promise<LyricsData | null> {
     );
   });
 
-  console.log(candidates);
+  // console.log(candidates);
   for (const candidate of candidates) {
     const result = await searchOnce(candidate);
-    console.log(candidate, result);
+    // console.log(candidate, result);
     if (result) return result;
   }
 

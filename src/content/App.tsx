@@ -19,6 +19,7 @@ import { useWatchTrack } from "./hooks/useWatchTrack";
 import { useVideoStream } from "./hooks/useVideoStream";
 import { createThumbnailTheme } from "./utils/thumbnailTheme";
 import { ThemeVars } from "./shared/types";
+import { usePlayerControls } from "./hooks/usePlayerControls";
 
 export default function App(): React.JSX.Element | null {
   useGlobalErrorLogging();
@@ -26,6 +27,17 @@ export default function App(): React.JSX.Element | null {
   const track = useWatchTrack();
   const lyricsState = useLyricsData(track);
   const currentTime = useVideoCurrentTime(track?.videoId);
+  
+  const {
+    isPaused,
+    volume,
+    offset,
+    togglePlay,
+    nextTrack,
+    prevTrack,
+    setVolume,
+    adjustOffset,
+  } = usePlayerControls();
 
   const { settings, updateSettings, resetAllSettings } = useLyricsSettings();
 
@@ -61,8 +73,8 @@ export default function App(): React.JSX.Element | null {
   );
 
   const activeIndex = useMemo(
-    () => getActiveLineIndex(syncedLines, currentTime),
-    [syncedLines, currentTime],
+    () => getActiveLineIndex(syncedLines, currentTime + offset),
+    [syncedLines, currentTime, offset],
   );
 
   useEffect(() => {
@@ -100,6 +112,18 @@ export default function App(): React.JSX.Element | null {
       cancelled = true;
     };
   }, [track?.videoId, settings?.pipBackgroundMode]);
+
+  // Apply saved offset when lyrics data is loaded
+  useEffect(() => {
+    if (lyricsState.data?.offsetMs !== undefined) {
+      const savedOffsetSec = lyricsState.data.offsetMs / 1000;
+      if (!isNaN(savedOffsetSec)) {
+        adjustOffset(savedOffsetSec - offset);
+      }
+    } else {
+      adjustOffset(-offset);
+    }
+  }, [lyricsState.data?.id]);
 
   if (!track?.videoId) {
     return null;
@@ -145,7 +169,19 @@ export default function App(): React.JSX.Element | null {
         settings={settings}
         themeVars={themeVars}
         thumbnail={track.thumbnail}
+        artist={artistLabel}
+        title={title}
         videoStream={videoStream ?? undefined}
+        playerControls={{
+          isPaused,
+          volume,
+          offset,
+          togglePlay,
+          nextTrack,
+          prevTrack,
+          setVolume,
+          adjustOffset,
+        }}
       />
     </>
   );

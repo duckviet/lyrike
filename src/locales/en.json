@@ -34,6 +34,14 @@
         "label": "Active Font Weight",
         "hint": "Thickness of the active line. 600–700 is usually most readable."
       },
+      "base_font_weight": {
+        "label": "Base Font Weight",
+        "hint": "Thickness of inactive lines."
+      },
+      "font_style": {
+        "label": "Font Style",
+        "hint": "Style of the lyrics (normal or italic)."
+      },
       "text_align": {
         "label": "Text Align",
         "hint": "Alignment of the lyric lines."

@@ -14,6 +14,7 @@ export interface LyricsData {
   artistName?: string;
   id?: number;
   instrumental?: boolean;
+  offsetMs?: number;
 }
 
 export interface LyricsState {
@@ -41,6 +42,8 @@ export interface Settings {
   activeTextSize: number;
   visibleLineCount: number;
   activeFontWeight: number;
+  fontWeight: number;
+  fontStyle: "normal" | "italic";
   inactiveOpacity: number;
   lyricSlideDurationSec: number;
   widgetWidth: number;

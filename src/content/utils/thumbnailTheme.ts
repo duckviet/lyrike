@@ -46,7 +46,7 @@ export function createThumbnailThemeFromPalette(
   const isDark = luminance < 0.5;
   const textColor = isDark ? "#ffffff" : "#000000";
   const textRgb = isDark ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
-  console.log(dominant, dominantRgb, accentRgb, textColor, textRgb, isDark);
+  // console.log(dominant, dominantRgb, accentRgb, textColor, textRgb, isDark);
 
   return {
     "--color-bg-primary": rgbaFromRgb(dominantRgb, 0.94),
@@ -83,7 +83,7 @@ export async function createThumbnailTheme(
         const palette = getPaletteSync(image, {
           colorCount: 5,
         }) as unknown as ColorImpl[];
-        console.log(palette);
+        // console.log(palette);
         resolve(createThumbnailThemeFromPalette(palette));
       } catch (e) {
         console.error("[Lyrics] ColorThief error:", e);
