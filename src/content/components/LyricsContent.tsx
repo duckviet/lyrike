@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, RefObject } from "react";
+import React, { useEffect, useMemo, useRef, useState, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { LyricsLines } from "./LyricsLines";
 import {
@@ -12,6 +12,7 @@ import {
   safePrepare,
   measureLineHeight,
 } from "../utils/lyricsUtils";
+import { DEFAULT_SETTINGS } from "../shared/settings";
 import { MeasuredSlot } from "../shared/types";
 
 interface LyricsContentProps {
@@ -36,27 +37,36 @@ export const LyricsContent = React.memo(function LyricsContent({
   contentHeightPx,
 }: LyricsContentProps): React.JSX.Element {
   const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [fontVersion, setFontVersion] = useState(0);
 
   const hasPlain = !!lyricsState.data?.plainLyrics;
 
-  const fontFamily =
-    settings?.fontFamily ||
-    "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-  const textSize = settings?.textSize || 15;
-  const activeTextSize = settings?.activeTextSize || 16;
-  const activeFontWeight = settings?.activeFontWeight || 600;
-  const fontWeight = settings?.fontWeight || 400;
-  const fontStyle = settings?.fontStyle || "normal";
-  const inactiveOpacity = settings?.inactiveOpacity || 0.44;
-  const visibleLineCount = settings?.visibleLineCount || 5;
-  const textAlign = settings?.textAlign || "left";
+  const fontFamily = settings?.fontFamily ?? DEFAULT_SETTINGS.fontFamily;
+  const textSize = settings?.textSize ?? DEFAULT_SETTINGS.textSize;
+  const activeTextSize =
+    settings?.activeTextSize ?? DEFAULT_SETTINGS.activeTextSize;
+  const activeFontWeight =
+    settings?.activeFontWeight ?? DEFAULT_SETTINGS.activeFontWeight;
+  const fontWeight = settings?.fontWeight ?? DEFAULT_SETTINGS.fontWeight;
+  const fontStyle = settings?.fontStyle ?? DEFAULT_SETTINGS.fontStyle;
+  const inactiveOpacity =
+    settings?.inactiveOpacity ?? DEFAULT_SETTINGS.inactiveOpacity;
+  const visibleLineCount =
+    settings?.visibleLineCount ?? DEFAULT_SETTINGS.visibleLineCount;
+  const textAlign = settings?.textAlign ?? DEFAULT_SETTINGS.textAlign;
   const slideDurationSec = Math.min(
     0.8,
-    Math.max(0.2, Number(settings?.lyricSlideDurationSec ?? 0.5)),
+    Math.max(
+      0.2,
+      Number(
+        settings?.lyricSlideDurationSec ??
+          DEFAULT_SETTINGS.lyricSlideDurationSec,
+      ),
+    ),
   );
 
-  const lineGap = 10;
+  const lineGap = settings?.lineGap ?? DEFAULT_SETTINGS.lineGap;
   const maxWidth = Math.max(80, Number(contentWidthPx ?? 320));
 
   const inactiveLineHeightPx = getLineHeightPx(textSize);
@@ -69,23 +79,30 @@ export const LyricsContent = React.memo(function LyricsContent({
   const halfWindow = Math.max(0, Math.floor((visibleLineCount - 1) / 2));
 
   useEffect(() => {
-    if (typeof document === "undefined" || !document.fonts) return;
+    const ownerDocument = containerRef.current?.ownerDocument ?? document;
+    if (!ownerDocument.fonts) return;
+
     let cancelled = false;
     let scheduled = false;
+
+    const ownerWindow = ownerDocument.defaultView ?? window;
 
     const bump = () => {
       if (cancelled || scheduled) return;
       scheduled = true;
-      requestAnimationFrame(() => {
+
+      ownerWindow.requestAnimationFrame(() => {
         scheduled = false;
-        if (!cancelled) setFontVersion((v) => v + 1);
+        if (!cancelled) {
+          setFontVersion((v) => v + 1);
+        }
       });
     };
 
     Promise.all([
-      document.fonts.load(inactiveFont).catch(() => {}),
-      document.fonts.load(activeFont).catch(() => {}),
-      document.fonts.ready.catch(() => {}),
+      ownerDocument.fonts.load(inactiveFont).catch(() => {}),
+      ownerDocument.fonts.load(activeFont).catch(() => {}),
+      ownerDocument.fonts.ready.catch(() => {}),
     ]).then(() => {
       if (!cancelled) bump();
     });
@@ -209,6 +226,7 @@ export const LyricsContent = React.memo(function LyricsContent({
 
       {!lyricsState.loading && lyricsState.data && hasSynced && (
         <div
+          ref={containerRef}
           className="flex flex-col gap-2.5"
           style={{
             fontFamily,

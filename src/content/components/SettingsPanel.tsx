@@ -60,8 +60,8 @@ function Toggle({ checked, onChange }: ToggleProps): React.JSX.Element {
       onClick={() => onChange(!checked)}
     >
       <span
-        className={`absolute top-[1.5px] w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${
-          checked ? "left-5.5" : "left-1"
+        className={`absolute top-[1.45px] w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${
+          checked ? "right-0" : "left-0"
         }`}
       />
     </button>
@@ -113,11 +113,11 @@ function Field({
             <div className="rounded-full text-text-secondary text-[12px] flex items-center justify-center cursor-default select-none leading-none">
               ⓘ
             </div>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-999">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[999]">
               {hint}
               {/* Arrow */}
               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-border-subtle" />
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-[-1px] border-4 border-transparent border-t-bg-secondary" />
+              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-bg-secondary" />
             </div>
           </div>
         )}
@@ -185,7 +185,7 @@ function RadioGroup<T extends string>({
               <div className="w-2 h-2 rounded-full bg-text-accent" />
             )}
           </div>
-          <div className="flex flex-col gap-[1px] min-w-0">
+          <div className="flex flex-col gap-px min-w-0">
             <span className="text-[13px] text-text-primary font-medium leading-none">
               {opt.label}
             </span>
@@ -423,6 +423,19 @@ export function SettingsPanel({
             onChange={(v) => handleChange("borderRadius", v)}
             min={8}
             max={32}
+            unit="px"
+          />
+        </Field>
+
+        <Field
+          label={t("settings.layout.line_gap.label")}
+          hint={t("settings.layout.line_gap.hint")}
+        >
+          <Slider
+            value={settings.lineGap}
+            onChange={(v) => handleChange("lineGap", v)}
+            min={0}
+            max={20}
             unit="px"
           />
         </Field>

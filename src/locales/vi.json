@@ -61,6 +61,10 @@
       "border_radius": {
         "label": "Độ bo góc",
         "hint": "Độ bo tròn của khung widget."
+      },
+      "line_gap": {
+        "label": "Khoảng cách dòng",
+        "hint": "Khoảng cách dọc giữa các dòng lyric."
       }
     },
     "appearance": {
@@ -105,6 +109,10 @@
       "video_bg": {
         "label": "Nền video",
         "hint": "Hiển thị video đang phát làm nền trong PiP (có thể tốn tài nguyên)."
+      },
+      "offset": {
+        "earlier": "Sớm hơn {{value}}s",
+        "later": "Trễ hơn {{value}}s"
       }
     },
     "language": {

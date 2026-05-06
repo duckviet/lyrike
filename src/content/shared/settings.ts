@@ -1,4 +1,12 @@
+import {
+  FONT_STYLE,
+  LANGUAGE,
+  PIP_BG_MODE,
+  TEXT_ALIGN,
+} from "../constants/settings";
 import { Settings } from "./types";
+
+export const CURRENT_SETTINGS_VERSION = 1;
 
 export const DEFAULT_SETTINGS: Settings = {
   fontFamily: "Montserrat, sans-serif",
@@ -7,7 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
   visibleLineCount: 5,
   activeFontWeight: 700,
   fontWeight: 400,
-  fontStyle: "italic",
+  fontStyle: FONT_STYLE.ITALIC,
   inactiveOpacity: 0.44,
   lyricSlideDurationSec: 0.4,
   widgetWidth: 360,
@@ -15,9 +23,12 @@ export const DEFAULT_SETTINGS: Settings = {
   backgroundOpacity: 88,
   autoScroll: true,
   hideFloatingWhenPiPOpen: false,
-  pipBackgroundMode: "video",
-  textAlign: "left",
-  language: "en",
+  pipBackgroundMode: PIP_BG_MODE.VIDEO,
+  textAlign: TEXT_ALIGN.LEFT,
+  language: LANGUAGE.EN,
+  showFloatingWidget: true,
+  lineGap: 10,
+  version: CURRENT_SETTINGS_VERSION,
 };
 
 export const SETTINGS_KEY_VALUE = "lyrics_extension_settings";
@@ -33,10 +44,38 @@ export async function loadSettings(): Promise<Settings> {
 
     if (storedSettings && typeof storedSettings === "object") {
       // Merge stored settings with defaults to ensure all new fields exist
-      return {
+      const merged: Settings = {
         ...DEFAULT_SETTINGS,
         ...storedSettings,
       };
+
+      // Validation logic: Nếu settings quá cũ hoặc có giá trị không hợp lệ
+      const isInvalid =
+        !merged.version ||
+        merged.version < CURRENT_SETTINGS_VERSION ||
+        typeof merged.lineGap !== "number";
+
+      if (isInvalid) {
+        console.warn("[Lyrike] Old or invalid settings detected, repairing...");
+        merged.version = CURRENT_SETTINGS_VERSION;
+
+        // Logic fix cho các enum
+        const VALID_PIP_MODES = Object.values(PIP_BG_MODE) as string[];
+        const VALID_LANGUAGES = Object.values(LANGUAGE) as string[];
+        const VALID_TEXT_ALIGNS = Object.values(TEXT_ALIGN) as string[];
+        const VALID_FONT_STYLES = Object.values(FONT_STYLE) as string[];
+
+        if (!VALID_PIP_MODES.includes(merged.pipBackgroundMode))
+          merged.pipBackgroundMode = DEFAULT_SETTINGS.pipBackgroundMode;
+        if (!VALID_LANGUAGES.includes(merged.language))
+          merged.language = DEFAULT_SETTINGS.language;
+        if (!VALID_TEXT_ALIGNS.includes(merged.textAlign))
+          merged.textAlign = DEFAULT_SETTINGS.textAlign;
+        if (!VALID_FONT_STYLES.includes(merged.fontStyle))
+          merged.fontStyle = DEFAULT_SETTINGS.fontStyle;
+      }
+
+      return merged;
     }
   } catch (e) {
     console.error("[Lyrics] Failed to load settings:", e);
@@ -47,7 +86,7 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSettings(settings: Settings): Promise<boolean> {
   try {
     await chrome.storage.local.set({
-      [SETTINGS_KEY_VALUE]: { ...getDefaultSettings(), ...settings },
+      [SETTINGS_KEY_VALUE]: settings,
     });
     return true;
   } catch (e) {
@@ -74,7 +113,12 @@ export function subscribeSettingsChange(
     area: string,
   ) => {
     if (area === "local" && changes[SETTINGS_KEY_VALUE]) {
-      callback(changes[SETTINGS_KEY_VALUE].newValue as Settings);
+      const rawValue = changes[SETTINGS_KEY_VALUE].newValue;
+      const newValue = {
+        ...DEFAULT_SETTINGS,
+        ...(typeof rawValue === "object" && rawValue !== null ? rawValue : {}),
+      } as Settings;
+      callback(newValue);
     }
   };
   chrome.storage.onChanged.addListener(handler);

@@ -1,49 +1,44 @@
+import { PIP_CSS } from "../pipStyles";
+import { buildFontFaceCss } from "../../fontFaces";
+
 export function preparePiPDocument(
   pipWindow: Window,
-  cssText: string,
+  tailwindStyles?: string,
 ): HTMLElement {
-  const doc = pipWindow.document;
+  const pipDocument = pipWindow.document;
 
-  doc.title = "YouTube Lyrics";
+  // Clear existing content
+  pipDocument.head.innerHTML = "";
+  pipDocument.body.innerHTML = "";
 
-  doc.documentElement.style.background = "transparent";
-  doc.documentElement.style.width = "100%";
-  doc.documentElement.style.height = "100%";
+  const meta = pipDocument.createElement("meta");
+  meta.name = "viewport";
+  meta.content = "width=device-width, initial-scale=1";
+  pipDocument.head.appendChild(meta);
 
-  doc.body.style.margin = "0";
-  doc.body.style.background = "transparent";
-  doc.body.style.width = "100%";
-  doc.body.style.height = "100%";
-  doc.body.style.overflow = "hidden";
+  // Inject Font Faces
+  const fontStyle = pipDocument.createElement("style");
+  fontStyle.id = "ytl-pip-font-faces";
+  fontStyle.textContent = buildFontFaceCss();
+  pipDocument.head.appendChild(fontStyle);
 
-  const baseStyleEl = doc.createElement("style");
-  baseStyleEl.textContent = `
-    html,
-    body,
-    #ytl-pip-root {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: transparent;
-    }
+  // Inject Base CSS
+  const baseStyle = pipDocument.createElement("style");
+  baseStyle.id = "ytl-pip-base-css";
+  baseStyle.textContent = PIP_CSS;
+  pipDocument.head.appendChild(baseStyle);
 
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-    }
-  `;
-  doc.head.appendChild(baseStyleEl);
+  // Inject Tailwind Styles if provided
+  if (tailwindStyles) {
+    const tailwindStyle = pipDocument.createElement("style");
+    tailwindStyle.id = "ytl-pip-tailwind";
+    tailwindStyle.textContent = tailwindStyles;
+    pipDocument.head.appendChild(tailwindStyle);
+  }
 
-  const styleEl = doc.createElement("style");
-  styleEl.textContent = cssText;
-  doc.head.appendChild(styleEl);
-
-  const root = doc.createElement("div");
+  const root = pipDocument.createElement("div");
   root.id = "ytl-pip-root";
-
-  doc.body.replaceChildren(root);
+  pipDocument.body.appendChild(root);
 
   return root;
 }

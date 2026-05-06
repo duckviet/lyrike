@@ -61,6 +61,10 @@
       "border_radius": {
         "label": "Border Radius",
         "hint": "The corner roundness of the widget."
+      },
+      "line_gap": {
+        "label": "Line Gap",
+        "hint": "Vertical spacing between lyric lines."
       }
     },
     "appearance": {
@@ -105,6 +109,10 @@
       "video_bg": {
         "label": "Video Background",
         "hint": "Show live video as PiP background (may consume more resources)."
+      },
+      "offset": {
+        "earlier": "{{value}}s earlier",
+        "later": "{{value}}s later"
       }
     },
     "language": {

@@ -1,3 +1,10 @@
+import {
+  FontStyle,
+  Language,
+  PipBackgroundMode,
+  TextAlign,
+} from "../constants/settings";
+
 export interface WatchInfo {
   videoId: string;
   title: string;
@@ -43,7 +50,7 @@ export interface Settings {
   visibleLineCount: number;
   activeFontWeight: number;
   fontWeight: number;
-  fontStyle: "normal" | "italic";
+  fontStyle: FontStyle;
   inactiveOpacity: number;
   lyricSlideDurationSec: number;
   widgetWidth: number;
@@ -51,9 +58,12 @@ export interface Settings {
   backgroundOpacity: number;
   autoScroll: boolean;
   hideFloatingWhenPiPOpen: boolean;
-  pipBackgroundMode: "default" | "color" | "thumbnail" | "video";
-  textAlign: "left" | "center" | "right";
-  language: "vi" | "en" | "auto";
+  pipBackgroundMode: PipBackgroundMode;
+  textAlign: TextAlign;
+  language: Language;
+  showFloatingWidget: boolean;
+  lineGap: number;
+  version: number;
 }
 
 export interface ThemeVars {

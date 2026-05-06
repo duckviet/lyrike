@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
+import { useTranslation } from "react-i18next";
 
 interface PiPActionBarProps {
   isVisible: boolean;
@@ -33,6 +34,7 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
   title,
   playerControls,
 }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -147,6 +149,7 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
           alignItems: "center",
           justifyContent: "center",
           gap: "6px",
+          height: "54px",
         }}
       >
         {/* Prev */}
@@ -243,7 +246,7 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
           <button
             onClick={() => playerControls.adjustOffset(-0.5)}
             style={offsetBtnStyle}
-            title="Sớm hơn 0.5s"
+            title={t("settings.pip.offset.earlier", { value: 0.5 })}
             onMouseEnter={(e) =>
               (e.currentTarget.style.background = "rgba(255,255,255,0.2)")
             }
@@ -268,7 +271,7 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
           <button
             onClick={() => playerControls.adjustOffset(0.5)}
             style={offsetBtnStyle}
-            title="Trễ hơn 0.5s"
+            title={t("settings.pip.offset.later", { value: 0.5 })}
             onMouseEnter={(e) =>
               (e.currentTarget.style.background = "rgba(255,255,255,0.2)")
             }

@@ -117,8 +117,19 @@ export default function LyricsPiPPortal({
       style={
         {
           "--pip-bg-opacity": showVideo || showThumbnail ? 0 : pipBgOpacity,
+          // Nếu có video/ảnh nền thì làm trong suốt hoàn toàn các biến màu nền
+          "--color-bg-primary":
+            showVideo || showThumbnail
+              ? "transparent"
+              : themeVars["--color-bg-primary"],
+          "--color-bg-secondary":
+            showVideo || showThumbnail
+              ? "transparent"
+              : themeVars["--color-bg-secondary"],
           background:
-            "linear-gradient(to bottom, var(--color-bg-primary, rgba(35, 35, 42, var(--pip-bg-opacity))), var(--color-bg-secondary, rgba(15, 15, 18, var(--pip-bg-opacity))))",
+            showVideo || showThumbnail
+              ? "transparent"
+              : "linear-gradient(to bottom, var(--color-bg-primary, rgba(35, 35, 42, var(--pip-bg-opacity))), var(--color-bg-secondary, rgba(15, 15, 18, var(--pip-bg-opacity))))",
           boxShadow:
             "inset 0 1px 0 rgba(255,255,255,0.03), inset 0 0 0 1px rgba(255,255,255,0.08), 0 24px 52px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.14), var(--shadow-glow, 0 0 28px rgba(180,160,255,0.22))",
           ...themeVars,
@@ -160,7 +171,7 @@ export default function LyricsPiPPortal({
         </div>
       ) : null}
       <div
-        className="h-full p-[14px_14px_16px_18px] relative min-h-0 overflow-y-auto yl-scrollbar"
+        className="h-full relative min-h-0 overflow-y-auto yl-scrollbar"
         style={{
           padding: "14px 14px 16px 18px",
           overflowY: "auto",

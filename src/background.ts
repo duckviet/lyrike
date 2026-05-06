@@ -61,7 +61,11 @@ async function searchOnce({
   const cacheKey = `lyrics:${normalizeText(artistName)}:${normalizeText(trackName)}`;
 
   const cached = await chrome.storage.local.get(cacheKey);
-  const cachedValue = cached[cacheKey] as number | string | LyricsData | undefined;
+  const cachedValue = cached[cacheKey] as
+    | number
+    | string
+    | LyricsData
+    | undefined;
 
   if (cachedValue !== undefined) {
     // New format: cache only LRCLIB id.

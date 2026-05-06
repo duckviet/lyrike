@@ -20,6 +20,7 @@ import { useVideoStream } from "./hooks/useVideoStream";
 import { createThumbnailTheme } from "./utils/thumbnailTheme";
 import { ThemeVars } from "./shared/types";
 import { usePlayerControls } from "./hooks/usePlayerControls";
+import { PIP_BG_MODE } from "./constants/settings";
 
 export default function App(): React.JSX.Element | null {
   useGlobalErrorLogging();
@@ -47,7 +48,6 @@ export default function App(): React.JSX.Element | null {
     track?.videoId,
   );
 
-  const [hiddenForVideoId, setHiddenForVideoId] = useState<string | null>(null);
   const [minimized, setMinimized] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("lyrics");
   const [themeVars, setThemeVars] = useState<ThemeVars>({});
@@ -58,7 +58,7 @@ export default function App(): React.JSX.Element | null {
 
   const { pos, startDrag } = useFloatingWidgetPosition(widgetWidth);
 
-  const isHidden = hiddenForVideoId === track?.videoId;
+  const isHidden = settings?.showFloatingWidget === false;
 
   const showFloating =
     !isHidden && !(isPiPOpen && settings?.hideFloatingWhenPiPOpen);
@@ -86,7 +86,7 @@ export default function App(): React.JSX.Element | null {
   useEffect(() => {
     let cancelled = false;
 
-    const themeEnabled = settings?.pipBackgroundMode === "color";
+    const themeEnabled = settings?.pipBackgroundMode === PIP_BG_MODE.COLOR;
 
     const loadTheme = async () => {
       try {
@@ -152,13 +152,19 @@ export default function App(): React.JSX.Element | null {
           onStartDrag={startDrag}
           onOpenPiP={openLyricsPiP}
           onToggleMinimized={() => setMinimized((value) => !value)}
-          onHide={() => setHiddenForVideoId(track?.videoId)}
+          onHide={() =>
+            settings && updateSettings({ ...settings, showFloatingWidget: false })
+          }
           onTabChange={setActiveTab}
           onSettingsChange={updateSettings}
           onResetSettings={resetAllSettings}
         />
       ) : (
-        <ReopenLyricsButton onClick={() => setHiddenForVideoId(null)} />
+        <ReopenLyricsButton
+          onClick={() =>
+            settings && updateSettings({ ...settings, showFloatingWidget: true })
+          }
+        />
       )}
 
       <LyricsPiPPortal

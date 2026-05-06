@@ -1,7 +1,11 @@
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import "../i18n";
-import styles from "./styles.css?inline";
+import styles from "./global.css?inline";
+import { injectFontFaces } from '../fontFaces';
+
+// Inject local fonts into the main document
+injectFontFaces();
 
 const ROOT_ID = 'yt-floating-lyrics-root';
 const CONTAINER_ID = 'lyrik-extension-container';

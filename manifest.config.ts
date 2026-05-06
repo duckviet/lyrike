@@ -5,7 +5,15 @@ export default defineManifest({
   name: "__MSG_extName__",
   description: "__MSG_extDesc__",
   default_locale: "en",
-  version: "1.0.7",
+  version: "1.0.8",
+  icons: {
+    "16": "icons/lyrike-icon@16px.png",
+    "48": "icons/lyrike-icon@48px.png",
+    "128": "icons/lyrike-icon@128px.png",
+  },
+  action: {
+    default_icon: "icons/lyrike-icon@128px.png",
+  },
   permissions: ["storage"],
   host_permissions: [
     "https://www.youtube.com/*",
@@ -23,6 +31,12 @@ export default defineManifest({
       matches: ["https://www.youtube.com/*"],
       js: ["src/content/main.tsx"],
       run_at: "document_idle",
+    },
+  ],
+  web_accessible_resources: [
+    {
+      resources: ["fonts/**/*"],
+      matches: ["https://www.youtube.com/*"],
     },
   ],
 });

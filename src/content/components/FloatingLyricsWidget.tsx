@@ -95,7 +95,7 @@ export function FloatingLyricsWidget({
   return (
     <div
       ref={widgetRef}
-      className="yl-widget p-3 fixed shadow-lg shadow-glow overflow-hidden border border-border-subtle backdrop-blur-[20px] text-text-primary"
+      className="yl-widget p-3 fixed shadow-lg overflow-hidden border border-border-subtle backdrop-blur-[20px] text-text-primary"
       style={
         {
           left: `${pos.x}px`,
