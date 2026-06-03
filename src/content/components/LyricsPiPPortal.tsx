@@ -4,6 +4,7 @@ import { LyricsContent } from "./LyricsContent";
 import { PIP_WINDOW_HEIGHT, PIP_WINDOW_WIDTH } from "../constants/ui";
 import { LyricsState, LyricLine, Settings, ThemeVars } from "../shared/types";
 import { PiPActionBar } from "./PiPActionBar";
+import { PiPSplitInfoPanel } from "./PiPSplitInfoPanel";
 import { usePiPHover } from "../hooks/usePiPHover";
 
 interface LyricsPiPPortalProps {
@@ -16,6 +17,7 @@ interface LyricsPiPPortalProps {
   thumbnail?: string;
   artist?: string;
   title?: string;
+  lyricsId?: number;
   videoStream?: MediaStream;
   playerControls: {
     isPaused: boolean;
@@ -39,6 +41,7 @@ export default function LyricsPiPPortal({
   thumbnail,
   artist,
   title,
+  lyricsId,
   videoStream,
   playerControls,
 }: LyricsPiPPortalProps): React.JSX.Element | null {
@@ -64,11 +67,45 @@ export default function LyricsPiPPortal({
     width: Math.max(80, PIP_WINDOW_WIDTH - 32),
     height: Math.max(1, PIP_WINDOW_HEIGHT - 32),
   });
+  const [pipWidth, setPipWidth] = useState(PIP_WINDOW_WIDTH);
 
   const pipBgOpacity = Math.max(
     0.3,
     Math.min(1, Number((settings?.backgroundOpacity ?? 88) / 100)),
   );
+
+  const showVideo = !!(settings?.pipBackgroundMode === "video" && videoStream);
+  const showThumbnail = !!(
+    settings?.pipBackgroundMode === "thumbnail" && thumbnail
+  );
+
+  const isSplitLayout = settings?.pipLayoutMode === "split";
+  const collapseWidth = Math.max(
+    320,
+    Number(settings?.pipInfoCollapseWidth ?? 400),
+  );
+  const showInfoPanel = isSplitLayout && pipWidth >= collapseWidth;
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const ownerWindow = element.ownerDocument.defaultView ?? window;
+
+    const updateSize = () => {
+      setPipWidth(Math.max(1, element.clientWidth));
+    };
+
+    updateSize();
+
+    const ResizeObserverCtor = ownerWindow.ResizeObserver ?? ResizeObserver;
+    const observer = new ResizeObserverCtor(updateSize);
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [pipRoot]);
 
   useEffect(() => {
     const element = bodyRef.current;
@@ -100,22 +137,21 @@ export default function LyricsPiPPortal({
     return () => {
       observer.disconnect();
     };
-  }, [pipRoot]);
+  }, [pipRoot, settings?.pipLayoutMode, showInfoPanel]);
 
   if (!pipRoot) return null;
-
-  const showVideo = !!(settings?.pipBackgroundMode === "video" && videoStream);
-  const showThumbnail = !!(
-    settings?.pipBackgroundMode === "thumbnail" && thumbnail
-  );
 
   return createPortal(
     <div
       ref={containerRef}
-      className="h-full flex flex-col overflow-hidden relative group"
       onMouseMove={handleMouseMove}
       style={
         {
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          position: "relative",
           "--pip-bg-opacity": showVideo || showThumbnail ? 0 : pipBgOpacity,
           // Nếu có video/ảnh nền thì làm trong suốt hoàn toàn các biến màu nền
           "--color-bg-primary":
@@ -170,31 +206,94 @@ export default function LyricsPiPPortal({
           />
         </div>
       ) : null}
-      <div
-        className="h-full relative min-h-0 overflow-y-auto yl-scrollbar"
-        style={{
-          padding: "14px 14px 16px 18px",
-          overflowY: "auto",
-          overflowX: "hidden",
-        }}
-        ref={bodyRef}
-      >
-        <LyricsContent
-          lyricsState={lyricsState}
-          syncedLines={syncedLines}
-          activeIndex={activeIndex}
-          settings={settings}
-          contentWidthPx={contentSize.width}
-          contentHeightPx={contentSize.height}
-        />
-      </div>
 
-      <PiPActionBar
-        isVisible={isHovered}
-        playerControls={playerControls}
-        artist={artist}
-        title={title}
-      />
+      {isSplitLayout ? (
+        <div
+          style={{
+            height: "100%",
+            minHeight: 0,
+            display: "flex",
+            minWidth: 0,
+            overflow: "hidden",
+          }}
+        >
+          {showInfoPanel ? (
+            <div
+              style={{
+                minHeight: 0,
+                flex: "1 1 0%",
+                paddingInline: 16,
+              }}
+            >
+              <PiPSplitInfoPanel
+                thumbnail={thumbnail}
+                title={title}
+                artist={artist}
+                lyricsId={lyricsId}
+                playerControls={playerControls}
+              />
+            </div>
+          ) : null}
+
+          <div
+            style={{
+              height: "100%",
+              minHeight: 0,
+              minWidth: 0,
+              overflowY: "auto",
+              overflowX: "hidden",
+              flex: showInfoPanel ? "2 1 0%" : "1 1 auto",
+              padding: showInfoPanel
+                ? "14px 20px 16px 0px"
+                : "14px 14px 16px 18px",
+            }}
+            ref={bodyRef}
+          >
+            <LyricsContent
+              lyricsState={lyricsState}
+              syncedLines={syncedLines}
+              activeIndex={activeIndex}
+              settings={settings}
+              contentWidthPx={contentSize.width}
+              contentHeightPx={contentSize.height}
+            />
+          </div>
+
+          <PiPActionBar
+            isVisible={isHovered}
+            playerControls={playerControls}
+            lyricsId={lyricsId}
+          />
+        </div>
+      ) : (
+        <>
+          <div
+            style={{
+              height: "100%",
+              minHeight: 0,
+              padding: "14px 14px 16px 18px",
+              overflowY: "auto",
+              overflowX: "hidden",
+            }}
+            ref={bodyRef}
+          >
+            <LyricsContent
+              lyricsState={lyricsState}
+              syncedLines={syncedLines}
+              activeIndex={activeIndex}
+              settings={settings}
+              contentWidthPx={contentSize.width}
+              contentHeightPx={contentSize.height}
+            />
+          </div>
+
+          <PiPActionBar
+            isVisible={isHovered}
+            playerControls={playerControls}
+            lyricsId={lyricsId}
+          />
+        </>
+      )}
     </div>,
     pipRoot,
   );

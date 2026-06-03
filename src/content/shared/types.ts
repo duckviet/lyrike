@@ -5,12 +5,20 @@ import {
   TextAlign,
 } from "../constants/settings";
 
+export const PIP_LAYOUT_MODE = {
+  CLASSIC: "classic",
+  SPLIT: "split",
+} as const;
+export type PipLayoutMode =
+  (typeof PIP_LAYOUT_MODE)[keyof typeof PIP_LAYOUT_MODE];
+
 export interface WatchInfo {
   videoId: string;
   title: string;
   channelName: string;
   artistName: string;
   trackName: string;
+  albumName?: string;
   thumbnail?: string;
 }
 
@@ -19,6 +27,8 @@ export interface LyricsData {
   plainLyrics: string | null;
   trackName?: string;
   artistName?: string;
+  albumName?: string;
+  duration?: number;
   id?: number;
   instrumental?: boolean;
   offsetMs?: number;
@@ -59,6 +69,8 @@ export interface Settings {
   autoScroll: boolean;
   hideFloatingWhenPiPOpen: boolean;
   pipBackgroundMode: PipBackgroundMode;
+  pipLayoutMode: PipLayoutMode;
+  pipInfoCollapseWidth: number;
   textAlign: TextAlign;
   language: Language;
   showFloatingWidget: boolean;

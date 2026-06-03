@@ -17,7 +17,7 @@ function getFallbackTrack(videoId: string): WatchInfo {
     "#owner #channel-name a",
   ]);
 
-  const { artistName, trackName } = inferSongInfo(domTitle, domChannel, "");
+  const { artistName, trackName, albumName } = inferSongInfo(domTitle, domChannel, "");
 
   return {
     videoId,
@@ -25,6 +25,7 @@ function getFallbackTrack(videoId: string): WatchInfo {
     channelName: domChannel,
     artistName,
     trackName,
+    albumName,
   };
 }
 
@@ -60,7 +61,7 @@ export function useWatchTrack(): WatchInfo | null {
 
         const title = details.title || fallbackTrack.title;
         const channelName = details.channelTitle || fallbackTrack.channelName;
-        const { artistName, trackName } = inferSongInfo(
+        const { artistName, trackName, albumName } = inferSongInfo(
           title,
           channelName,
           details.description,
@@ -72,6 +73,7 @@ export function useWatchTrack(): WatchInfo | null {
           channelName,
           artistName,
           trackName,
+          albumName,
           thumbnail: details.thumbnail,
         });
       } catch (err) {

@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Settings } from "../shared/types";
+import { PIP_LAYOUT_MODE, Settings } from "../shared/types";
 import { FONTS } from "../constants/settings";
 
 /* ---------- Reusable primitives ---------- */
@@ -530,6 +530,52 @@ export function SettingsPanel({
             ]}
           />
         </Field>
+
+        <Field
+          label={t("settings.pip.layout_mode.label")}
+          hint={t("settings.pip.layout_mode.hint")}
+        >
+          <RadioGroup
+            value={settings.pipLayoutMode}
+            onChange={(v) => handleChange("pipLayoutMode", v)}
+            options={[
+              {
+                value: PIP_LAYOUT_MODE.CLASSIC,
+                label: t("settings.pip.layout_mode.classic"),
+                hint: t("settings.pip.layout_mode.classic_hint"),
+              },
+              {
+                value: PIP_LAYOUT_MODE.SPLIT,
+                label: t("settings.pip.layout_mode.split"),
+                hint: t("settings.pip.layout_mode.split_hint"),
+              },
+            ]}
+          />
+        </Field>
+
+        {/* <Field
+          label={t("settings.pip.info_collapse_width.label")}
+          hint={t("settings.pip.info_collapse_width.hint")}
+        >
+          <div className="flex items-center gap-[10px]">
+            <input
+              className={`${selectClass} flex-1`}
+              type="number"
+              min={320}
+              step={10}
+              value={settings.pipInfoCollapseWidth ?? 300}
+              onChange={(e) =>
+                handleChange(
+                  "pipInfoCollapseWidth",
+                  Number(e.target.value || 0),
+                )
+              }
+            />
+            <span className="min-w-[48px] text-right text-[12px] text-text-secondary tabular-nums">
+              px
+            </span>
+          </div>
+        </Field> */}
       </Section>
 
       {/* Language */}

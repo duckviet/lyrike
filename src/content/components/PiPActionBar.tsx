@@ -6,6 +6,8 @@ interface PiPActionBarProps {
   isVisible: boolean;
   artist?: string;
   title?: string;
+  lyricsId?: number;
+  placement?: "overlay" | "inline";
   playerControls: {
     isPaused: boolean;
     volume: number;
@@ -18,20 +20,14 @@ interface PiPActionBarProps {
   };
 }
 
-function normalizeText(value: string = ""): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function lyricsOffsetKey(id: number): string {
+  return `lyrics_offset:${id}`;
 }
 
 export const PiPActionBar: React.FC<PiPActionBarProps> = ({
   isVisible,
-  artist,
-  title,
+  lyricsId,
+  placement = "overlay",
   playerControls,
 }) => {
   const { t } = useTranslation();
@@ -40,7 +36,7 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
 
   // Debounce save offset (10s)
   useEffect(() => {
-    if (!artist || !title) return;
+    if (typeof lyricsId !== "number") return;
 
     // Clear previous timeout if offset changed within 10s
     if (saveTimeoutRef.current) {
@@ -48,37 +44,24 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
     }
 
     saveTimeoutRef.current = setTimeout(async () => {
-      const cacheKey = `lyrics:${normalizeText(artist)}:${normalizeText(title)}`;
       try {
-        const result = await chrome.storage.local.get(cacheKey);
-        const cachedValue = result[cacheKey];
-
-        let id: string | number | null = null;
-        if (typeof cachedValue === "string") {
-          id = cachedValue.split("#")[0];
-        } else if (typeof cachedValue === "number") {
-          id = cachedValue;
-        }
-
-        if (id) {
-          const offsetMs = Math.round(playerControls.offset * 1000);
-          await chrome.storage.local.set({
-            [cacheKey]: `${id}#${offsetMs}`,
-          });
-          // console.log(`[Lyrics] Saved offset: ${offsetMs} for ${cacheKey}`);
-        }
+        const offsetMs = Math.round(playerControls.offset * 1000);
+        await chrome.storage.local.set({
+          [lyricsOffsetKey(lyricsId)]: offsetMs,
+        });
       } catch (err) {
         console.error("[Lyrics] Failed to save offset debounce:", err);
       }
-    }, 10000); // 10 seconds
+    }, 2000);
 
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [playerControls.offset, artist, title]);
+  }, [playerControls.offset, lyricsId]);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    if (placement === "inline") return;
 
     if (isVisible) {
       gsap.to(containerRef.current, {
@@ -134,22 +117,42 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
       <div
         ref={containerRef}
         style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          opacity: 0,
-          transform: "translateY(20px)",
-          pointerEvents: "none",
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.0) 100%)",
-          padding: "20px 12px 8px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "6px",
-          height: "54px",
+          ...(placement === "inline"
+            ? {
+                position: "relative",
+                inset: "auto",
+                zIndex: 1,
+                opacity: 1,
+                transform: "none",
+                pointerEvents: "auto",
+                background: "rgba(0,0,0,0.35)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                borderRadius: 10,
+                padding: "10px 10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                height: "auto",
+              }
+            : {
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 100,
+                opacity: 0,
+                transform: "translateY(20px)",
+                pointerEvents: "none",
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.0) 100%)",
+                padding: "20px 12px 8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                height: "54px",
+              }),
         }}
       >
         {/* Prev */}

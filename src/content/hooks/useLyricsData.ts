@@ -30,6 +30,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
       return;
     }
 
+    console.log(track)
     const queryTrackName = (track.trackName || track.title || "").trim();
     if (!queryTrackName) {
       return;
@@ -69,6 +70,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
             artistName: track.artistName,
             channelName: track.channelName,
             originalTitle: track.title,
+            albumName: track.albumName,
           },
         },
         (response) => {
@@ -121,6 +123,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
     track?.title,
     track?.artistName,
     track?.channelName,
+    track?.albumName,
   ]);
 
   return lyricsState;

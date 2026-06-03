@@ -4,7 +4,7 @@ import {
   PIP_BG_MODE,
   TEXT_ALIGN,
 } from "../constants/settings";
-import { Settings } from "./types";
+import { PIP_LAYOUT_MODE, Settings } from "./types";
 
 export const CURRENT_SETTINGS_VERSION = 1;
 
@@ -24,6 +24,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoScroll: true,
   hideFloatingWhenPiPOpen: false,
   pipBackgroundMode: PIP_BG_MODE.VIDEO,
+  pipLayoutMode: PIP_LAYOUT_MODE.CLASSIC,
+  pipInfoCollapseWidth: 400,
   textAlign: TEXT_ALIGN.LEFT,
   language: LANGUAGE.EN,
   showFloatingWidget: true,
@@ -53,7 +55,10 @@ export async function loadSettings(): Promise<Settings> {
       const isInvalid =
         !merged.version ||
         merged.version < CURRENT_SETTINGS_VERSION ||
-        typeof merged.lineGap !== "number";
+        typeof merged.lineGap !== "number" ||
+        typeof merged.pipInfoCollapseWidth !== "number" ||
+        (merged.pipLayoutMode !== PIP_LAYOUT_MODE.CLASSIC &&
+          merged.pipLayoutMode !== PIP_LAYOUT_MODE.SPLIT);
 
       if (isInvalid) {
         console.warn("[Lyrike] Old or invalid settings detected, repairing...");
@@ -67,6 +72,19 @@ export async function loadSettings(): Promise<Settings> {
 
         if (!VALID_PIP_MODES.includes(merged.pipBackgroundMode))
           merged.pipBackgroundMode = DEFAULT_SETTINGS.pipBackgroundMode;
+        if (
+          merged.pipLayoutMode !== PIP_LAYOUT_MODE.CLASSIC &&
+          merged.pipLayoutMode !== PIP_LAYOUT_MODE.SPLIT
+        ) {
+          merged.pipLayoutMode = DEFAULT_SETTINGS.pipLayoutMode;
+        }
+        if (
+          typeof merged.pipInfoCollapseWidth !== "number" ||
+          !Number.isFinite(merged.pipInfoCollapseWidth) ||
+          merged.pipInfoCollapseWidth < 320
+        ) {
+          merged.pipInfoCollapseWidth = DEFAULT_SETTINGS.pipInfoCollapseWidth;
+        }
         if (!VALID_LANGUAGES.includes(merged.language))
           merged.language = DEFAULT_SETTINGS.language;
         if (!VALID_TEXT_ALIGNS.includes(merged.textAlign))

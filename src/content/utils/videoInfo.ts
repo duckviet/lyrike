@@ -27,11 +27,13 @@ export const fetchVideoDetails = async (
     `${BASE_URL}/videos?part=snippet,statistics&id=${videoId}&key=${API_KEY}`,
   );
 
+
   if (!response.ok) {
     throw new Error(`Video details request failed: ${response.status}`);
   }
 
   const data = await response.json();
+  console.log(data)
 
   if (!data.items?.[0]) {
     throw new Error("Video not found");

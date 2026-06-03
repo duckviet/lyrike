@@ -177,6 +177,7 @@ export default function App(): React.JSX.Element | null {
         thumbnail={track.thumbnail}
         artist={artistLabel}
         title={title}
+        lyricsId={typeof lyricsState.data?.id === "number" ? lyricsState.data.id : undefined}
         videoStream={videoStream ?? undefined}
         playerControls={{
           isPaused,

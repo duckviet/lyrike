@@ -1,6 +1,15 @@
 import { LyricsData } from "./content/shared/types";
+import { normalizeChannelToArtist } from "./content/utils/trackInfo";
 
-function normalizeText(value: string = ""): string {
+export const SYNCED_LYRICS_BONUS = 100;
+export const EXACT_MATCH_BONUS = 10;
+export const PARTIAL_MATCH_BONUS = 4;
+
+export function lyricsOffsetKey(id: number): string {
+  return `lyrics_offset:${id}`;
+}
+
+export function normalizeText(value: string = ""): string {
   return value
     .toLowerCase()
     .normalize("NFD")
@@ -10,34 +19,40 @@ function normalizeText(value: string = ""): string {
     .trim();
 }
 
-function scoreResult(
+export function scoreResult(
   result: LyricsData,
   trackName: string,
   artistName: string,
+  albumName?: string,
 ): number {
   const syncedLyrics = result.syncedLyrics;
   const rt = normalizeText(result.trackName || "");
   const ra = normalizeText(result.artistName || "");
+  const rb = normalizeText(result.albumName || "");
   const t = normalizeText(trackName || "");
   const a = normalizeText(artistName || "");
+  const b = normalizeText(albumName || "");
 
   let score = 0;
 
-  if (syncedLyrics) score += 100;
-  if (t && rt === t) score += 10;
-  if (a && ra === a) score += 10;
-  if (t && (rt.includes(t) || t.includes(rt))) score += 4;
-  if (a && (ra.includes(a) || a.includes(ra))) score += 4;
+  if (syncedLyrics) score += SYNCED_LYRICS_BONUS;
+  if (t && rt === t) score += EXACT_MATCH_BONUS;
+  if (a && ra === a) score += EXACT_MATCH_BONUS;
+  if (b && rb === b) score += EXACT_MATCH_BONUS;
+  if (t && (rt.includes(t) || t.includes(rt))) score += PARTIAL_MATCH_BONUS;
+  if (a && (ra.includes(a) || a.includes(ra))) score += PARTIAL_MATCH_BONUS;
+  if (b && (rb.includes(b) || b.includes(rb))) score += PARTIAL_MATCH_BONUS;
 
   return score;
 }
 
-interface SearchCandidate {
+export interface SearchCandidate {
   trackName: string;
   artistName: string;
+  albumName?: string;
 }
 
-async function fetchLyricsById(id: number): Promise<LyricsData | null> {
+export async function fetchLyricsById(id: number): Promise<LyricsData | null> {
   const response = await fetch(`https://lrclib.net/api/get/${id}`);
 
   if (response.status === 404) {
@@ -52,57 +67,79 @@ async function fetchLyricsById(id: number): Promise<LyricsData | null> {
   return result;
 }
 
-async function searchOnce({
+/**
+ * Resolves a cached value from chrome storage. Handles migrations from legacy structures.
+ */
+export async function resolveCachedEntry(
+  cacheKey: string,
+  cachedValue: unknown,
+): Promise<{ id: number; offsetMs: number } | null> {
+  if (cachedValue === undefined) return null;
+
+  // New format: cache only LRCLIB id (number) or string format "id#offset"
+  if (typeof cachedValue === "number" || typeof cachedValue === "string") {
+    let id: number;
+    let offsetMs: number = 0;
+
+    if (typeof cachedValue === "string") {
+      const parts = cachedValue.split("#");
+      id = parseInt(parts[0], 10);
+      if (parts[1]) {
+        offsetMs = parseInt(parts[1], 10) || 0;
+      }
+    } else {
+      id = cachedValue;
+    }
+
+    if (!Number.isFinite(id)) return null;
+
+    // Fallback: offset stored by id (stable even if cacheKey changes)
+    if (!offsetMs) {
+      const offsetResult = await chrome.storage.local.get(lyricsOffsetKey(id));
+      const storedOffset = offsetResult[lyricsOffsetKey(id)];
+      if (typeof storedOffset === "number" && Number.isFinite(storedOffset)) {
+        offsetMs = storedOffset;
+      }
+    }
+
+    return { id, offsetMs };
+  }
+
+  // Backward-compatible migration: old cache stored full lyrics payload.
+  if (typeof cachedValue === "object" && cachedValue !== null) {
+    const legacyId = (cachedValue as Record<string, unknown>).id;
+    if (typeof legacyId === "number" && Number.isFinite(legacyId)) {
+      await chrome.storage.local.set({ [cacheKey]: `${legacyId}#0` });
+      await chrome.storage.local.set({ [lyricsOffsetKey(legacyId)]: 0 });
+      return { id: legacyId, offsetMs: 0 };
+    }
+  }
+
+  // Invalid cached structure, remove it
+  await chrome.storage.local.remove(cacheKey);
+  return null;
+}
+
+export async function searchOnce({
   trackName,
   artistName,
+  albumName,
 }: SearchCandidate): Promise<LyricsData | null> {
   if (!trackName) return null;
 
-  const cacheKey = `lyrics:${normalizeText(artistName)}:${normalizeText(trackName)}`;
+  const cacheKey = `lyrics:${normalizeText(artistName)}:${normalizeText(trackName)}:${normalizeText(albumName)}`;
 
   const cached = await chrome.storage.local.get(cacheKey);
-  const cachedValue = cached[cacheKey] as
-    | number
-    | string
-    | LyricsData
-    | undefined;
+  const cachedValue = cached[cacheKey];
 
-  if (cachedValue !== undefined) {
-    // New format: cache only LRCLIB id.
-    if (typeof cachedValue === "number" || typeof cachedValue === "string") {
-      let id: number;
-      let offsetMs: number = 0;
-      if (typeof cachedValue === "string") {
-        const parts = cachedValue.split("#");
-        id = parseInt(parts[0], 10);
-        if (parts[1]) {
-          offsetMs = parseInt(parts[1], 10) || 0;
-        }
-      } else {
-        id = cachedValue;
-      }
-
-      const fromId = await fetchLyricsById(id);
-      if (fromId) {
-        return { ...fromId, offsetMs };
-      }
-      await chrome.storage.local.remove(cacheKey);
-    } else if (typeof cachedValue === "object") {
-      // Backward-compatible migration: old cache stored full lyrics payload.
-      const legacyId = cachedValue.id;
-
-      if (typeof legacyId === "number") {
-        // Save as string with 0 offset by default if it was legacy object
-        await chrome.storage.local.set({ [cacheKey]: `${legacyId}#0` });
-        const fromId = await fetchLyricsById(legacyId);
-        if (fromId) {
-          return fromId;
-        }
-        await chrome.storage.local.remove(cacheKey);
-      } else {
-        await chrome.storage.local.remove(cacheKey);
-      }
+  const resolved = await resolveCachedEntry(cacheKey, cachedValue);
+  if (resolved) {
+    const fromId = await fetchLyricsById(resolved.id);
+    if (fromId) {
+      return { ...fromId, offsetMs: resolved.offsetMs };
     }
+    // If lyrics are not found (e.g. 404), clear stale cache and search API
+    await chrome.storage.local.remove(cacheKey);
   }
 
   const url = new URL("https://lrclib.net/api/search");
@@ -110,6 +147,10 @@ async function searchOnce({
 
   if (artistName) {
     url.searchParams.set("artist_name", artistName);
+  }
+
+  if (albumName) {
+    url.searchParams.set("album_name", albumName);
   }
 
   const response = await fetch(url.toString());
@@ -120,71 +161,73 @@ async function searchOnce({
 
   const results: LyricsData[] = await response.json();
 
-  // console.log(url);
-  // console.log(results);
   const best =
     results
       .slice()
       .sort(
         (a, b) =>
-          scoreResult(b, trackName, artistName) -
-          scoreResult(a, trackName, artistName),
+          scoreResult(b, trackName, artistName, albumName) -
+          scoreResult(a, trackName, artistName, albumName),
       )[0] || null;
 
   if (typeof best?.id === "number") {
     // Initial save with 0 offset
     await chrome.storage.local.set({ [cacheKey]: `${best.id}#0` });
+    await chrome.storage.local.set({ [lyricsOffsetKey(best.id)]: 0 });
   }
 
   return best;
 }
 
-interface LyricsPayload {
+export interface LyricsPayload {
   trackName: string;
   artistName: string;
   channelName: string;
   originalTitle: string;
+  albumName?: string;
 }
 
-async function findLyrics(payload: LyricsPayload): Promise<LyricsData | null> {
-  const { trackName, artistName, channelName, originalTitle } = payload;
+/**
+ * Resolves lyrics by trying multiple search candidates in order of specificity.
+ * 
+ * Strategy:
+ * 1. Specific match: Cleaned track + Inferred artist + Album.
+ * 2. General match: Cleaned track + Inferred artist (no album).
+ * 3. Channel fallback: Cleaned track + Normalized channel name.
+ * 4. Raw channel fallback: Cleaned track + Raw channel name.
+ * 5. Track-only search: Cleaned track name only (leveraging LRCLIB scoring).
+ * 6. Last resort: Original full video title (catches titles with unconventional layouts).
+ * 
+ * Candidates are filtered and deduplicated using normalizeText before executing.
+ */
+export async function findLyrics(payload: LyricsPayload): Promise<LyricsData | null> {
+  const { trackName, artistName, channelName, originalTitle, albumName } = payload;
 
-  // Normalize channel name: strip "Official", "VEVO", etc.
-  const normalizedChannel = channelName
-    .replace(
-      /\b(official|vevo|music|channel|tv|topic|records?|entertainment)\b/gi,
-      "",
-    )
-    .replace(/\s+/g, " ")
-    .trim();
+  // Normalize channel name using imported module function
+  const normalizedChannel = normalizeChannelToArtist(channelName);
 
   const candidates: SearchCandidate[] = [
-    // Best case: inferred artist + clean track
-    { trackName, artistName },
-    // Fallback: use normalized channel as artist
-    { trackName, artistName: normalizedChannel },
-    // Fallback: raw channel name
-    { trackName, artistName: channelName },
-    // Fallback: track only (let LRCLIB score sort it out)
-    { trackName, artistName: "" },
-    // Last resort: original full title (catches edge cases)
-    { trackName: originalTitle, artistName: "" },
+    { trackName, artistName, albumName },
+    { trackName, artistName, albumName: "" },
+    { trackName, artistName: normalizedChannel, albumName: "" },
+    { trackName, artistName: channelName, albumName: "" },
+    { trackName, artistName: "", albumName: "" },
+    { trackName: originalTitle, artistName: "", albumName: "" },
   ].filter((item, index, arr) => {
     if (!item.trackName) return false;
-    // Deduplicate
     return (
       arr.findIndex(
         (x) =>
           normalizeText(x.trackName) === normalizeText(item.trackName) &&
-          normalizeText(x.artistName) === normalizeText(item.artistName),
+          normalizeText(x.artistName) === normalizeText(item.artistName) &&
+          normalizeText(x.albumName) === normalizeText(item.albumName),
       ) === index
     );
   });
-
-  // console.log(candidates);
+  console.log(payload)
   for (const candidate of candidates) {
     const result = await searchOnce(candidate);
-    // console.log(candidate, result);
+    console.log(candidate, result);
     if (result) return result;
   }
 

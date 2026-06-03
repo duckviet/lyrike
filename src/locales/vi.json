@@ -98,6 +98,18 @@
         "thumbnail": "Hình nền video (Thumbnail)",
         "video": "Video đang phát (Live)"
       },
+      "layout_mode": {
+        "label": "Bố cục PiP",
+        "hint": "Chọn cách sắp xếp nội dung trong cửa sổ PiP.",
+        "classic": "Cổ điển (Chỉ lyrics)",
+        "classic_hint": "Hiển thị lyrics toàn chiều rộng với action bar dạng overlay.",
+        "split": "Chia đôi (Info + Lyrics)",
+        "split_hint": "Hiển thị thumbnail/tên bài/ca sĩ và đặt action bar ngay bên dưới."
+      },
+      "info_collapse_width": {
+        "label": "Ẩn info khi nhỏ hơn",
+        "hint": "Tự ẩn khu vực info khi cửa sổ PiP nhỏ hơn giá trị này."
+      },
       "dominant_color": {
         "label": "Màu theme theo thumbnail",
         "hint": "Dùng màu chủ đạo từ thumbnail làm theme cho PiP."
