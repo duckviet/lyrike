@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Settings } from "../shared/types";
+import { PIP_LAYOUT_MODE, Settings } from "../shared/types";
 import { FONTS } from "../constants/settings";
 
 /* ---------- Reusable primitives ---------- */
@@ -60,8 +60,8 @@ function Toggle({ checked, onChange }: ToggleProps): React.JSX.Element {
       onClick={() => onChange(!checked)}
     >
       <span
-        className={`absolute top-[1.5px] w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${
-          checked ? "left-5.5" : "left-1"
+        className={`absolute top-[1.45px] w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${
+          checked ? "right-0" : "left-0"
         }`}
       />
     </button>
@@ -113,11 +113,11 @@ function Field({
             <div className="rounded-full text-text-secondary text-[12px] flex items-center justify-center cursor-default select-none leading-none">
               ⓘ
             </div>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-999">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[999]">
               {hint}
               {/* Arrow */}
               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-border-subtle" />
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-[-1px] border-4 border-transparent border-t-bg-secondary" />
+              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-bg-secondary" />
             </div>
           </div>
         )}
@@ -185,7 +185,7 @@ function RadioGroup<T extends string>({
               <div className="w-2 h-2 rounded-full bg-text-accent" />
             )}
           </div>
-          <div className="flex flex-col gap-[1px] min-w-0">
+          <div className="flex flex-col gap-px min-w-0">
             <span className="text-[13px] text-text-primary font-medium leading-none">
               {opt.label}
             </span>
@@ -235,6 +235,34 @@ export function SettingsPanel({
   const selectClass =
     "w-full p-[8px_10px] bg-bg-tertiary border border-border-subtle rounded-sm text-text-primary text-[13px] cursor-pointer outline-none";
 
+  const selectedFont =
+    FONTS.find((f) => f.value === settings.fontFamily) || FONTS[0];
+
+  const handleFontFamilyChange = (value: string) => {
+    const newFont = FONTS.find((f) => f.value === value) || FONTS[0];
+    const updates: Partial<Settings> = { fontFamily: value };
+
+    // Clamp weights to new font's range
+    const minW = newFont.minWeight ?? Math.min(...newFont.weights);
+    const maxW = newFont.maxWeight ?? Math.max(...newFont.weights);
+
+    if (settings.activeFontWeight < minW) updates.activeFontWeight = minW;
+    if (settings.activeFontWeight > maxW) updates.activeFontWeight = maxW;
+    if (settings.fontWeight < minW) updates.fontWeight = minW;
+    if (settings.fontWeight > maxW) updates.fontWeight = maxW;
+
+    // Reset italic if not supported
+    if (!newFont.supportsItalic && settings.fontStyle === "italic") {
+      updates.fontStyle = "normal";
+    }
+
+    onChange({ ...settings, ...updates });
+  };
+
+  const minWeight = selectedFont.minWeight ?? Math.min(...selectedFont.weights);
+  const maxWeight = selectedFont.maxWeight ?? Math.max(...selectedFont.weights);
+  const weightStep = selectedFont.isVariable ? 10 : 100;
+
   return (
     <div className="flex flex-col gap-4">
       {/* Typography */}
@@ -249,7 +277,7 @@ export function SettingsPanel({
           <select
             className={selectClass}
             value={settings.fontFamily}
-            onChange={(e) => handleChange("fontFamily", e.target.value)}
+            onChange={(e) => handleFontFamilyChange(e.target.value)}
           >
             {FONTS.map((f) => (
               <option key={f.value} value={f.value}>
@@ -285,18 +313,56 @@ export function SettingsPanel({
           />
         </Field>
 
-        <Field
-          label={t("settings.typography.active_font_weight.label")}
-          hint={t("settings.typography.active_font_weight.hint")}
-        >
-          <Slider
-            value={settings.activeFontWeight}
-            onChange={(v) => handleChange("activeFontWeight", v)}
-            min={400}
-            max={800}
-            step={100}
-          />
-        </Field>
+        {selectedFont.weights.length > 1 && (
+          <>
+            <Field
+              label={t("settings.typography.active_font_weight.label")}
+              hint={t("settings.typography.active_font_weight.hint")}
+            >
+              <Slider
+                value={settings.activeFontWeight}
+                onChange={(v) => handleChange("activeFontWeight", v)}
+                min={minWeight}
+                max={maxWeight}
+                step={weightStep}
+              />
+            </Field>
+
+            <Field
+              label={t("settings.typography.base_font_weight.label")}
+              hint={t("settings.typography.base_font_weight.hint")}
+            >
+              <Slider
+                value={settings.fontWeight}
+                onChange={(v) => handleChange("fontWeight", v)}
+                min={minWeight}
+                max={maxWeight}
+                step={weightStep}
+              />
+            </Field>
+          </>
+        )}
+
+        {selectedFont.supportsItalic && (
+          <Field
+            label={t("settings.typography.font_style.label")}
+            hint={t("settings.typography.font_style.hint")}
+          >
+            <select
+              className={selectClass}
+              value={settings.fontStyle}
+              onChange={(e) =>
+                handleChange(
+                  "fontStyle",
+                  e.target.value as Settings["fontStyle"],
+                )
+              }
+            >
+              <option value="normal">Normal</option>
+              <option value="italic">Italic</option>
+            </select>
+          </Field>
+        )}
 
         <Field
           label={t("settings.typography.text_align.label")}
@@ -357,6 +423,19 @@ export function SettingsPanel({
             onChange={(v) => handleChange("borderRadius", v)}
             min={8}
             max={32}
+            unit="px"
+          />
+        </Field>
+
+        <Field
+          label={t("settings.layout.line_gap.label")}
+          hint={t("settings.layout.line_gap.hint")}
+        >
+          <Slider
+            value={settings.lineGap}
+            onChange={(v) => handleChange("lineGap", v)}
+            min={0}
+            max={20}
             unit="px"
           />
         </Field>
@@ -451,6 +530,52 @@ export function SettingsPanel({
             ]}
           />
         </Field>
+
+        <Field
+          label={t("settings.pip.layout_mode.label")}
+          hint={t("settings.pip.layout_mode.hint")}
+        >
+          <RadioGroup
+            value={settings.pipLayoutMode}
+            onChange={(v) => handleChange("pipLayoutMode", v)}
+            options={[
+              {
+                value: PIP_LAYOUT_MODE.CLASSIC,
+                label: t("settings.pip.layout_mode.classic"),
+                hint: t("settings.pip.layout_mode.classic_hint"),
+              },
+              {
+                value: PIP_LAYOUT_MODE.SPLIT,
+                label: t("settings.pip.layout_mode.split"),
+                hint: t("settings.pip.layout_mode.split_hint"),
+              },
+            ]}
+          />
+        </Field>
+
+        {/* <Field
+          label={t("settings.pip.info_collapse_width.label")}
+          hint={t("settings.pip.info_collapse_width.hint")}
+        >
+          <div className="flex items-center gap-[10px]">
+            <input
+              className={`${selectClass} flex-1`}
+              type="number"
+              min={320}
+              step={10}
+              value={settings.pipInfoCollapseWidth ?? 300}
+              onChange={(e) =>
+                handleChange(
+                  "pipInfoCollapseWidth",
+                  Number(e.target.value || 0),
+                )
+              }
+            />
+            <span className="min-w-[48px] text-right text-[12px] text-text-secondary tabular-nums">
+              px
+            </span>
+          </div>
+        </Field> */}
       </Section>
 
       {/* Language */}

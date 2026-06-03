@@ -1,7 +1,33 @@
 import { useEffect, useState } from "react";
 import { WatchInfo } from "../shared/types";
-import { fetchVideoDetails } from "../utils/videoInfo";
+import { canFetchVideoDetails, fetchVideoDetails } from "../utils/videoInfo";
 import { getVideoIdFromURL, inferSongInfo, pickText } from "../utils/trackInfo";
+
+function getFallbackTrack(videoId: string): WatchInfo {
+  const domTitle =
+    pickText([
+      "ytd-watch-metadata h1 yt-formatted-string",
+      "h1.title yt-formatted-string",
+      "h1.style-scope.ytd-watch-metadata",
+    ]) || document.title.replace(/\s*-\s*YouTube\s*$/i, "").trim();
+
+  const domChannel = pickText([
+    "ytd-watch-metadata ytd-channel-name a",
+    "#channel-name a",
+    "#owner #channel-name a",
+  ]);
+
+  const { artistName, trackName, albumName } = inferSongInfo(domTitle, domChannel, "");
+
+  return {
+    videoId,
+    title: domTitle,
+    channelName: domChannel,
+    artistName,
+    trackName,
+    albumName,
+  };
+}
 
 /**
  * Detects and extracts track info from YouTube watch page.
@@ -20,24 +46,22 @@ export function useWatchTrack(): WatchInfo | null {
         return;
       }
 
-      const domTitle = pickText([
-        "ytd-watch-metadata h1 yt-formatted-string",
-        "h1.title yt-formatted-string",
-        "h1.style-scope.ytd-watch-metadata",
-      ]);
-      const domChannel = pickText([
-        "ytd-watch-metadata ytd-channel-name a",
-        "#channel-name a",
-        "#owner #channel-name a",
-      ]);
+      const fallbackTrack = getFallbackTrack(videoId);
+
+      if (!canFetchVideoDetails()) {
+        if (!cancelled) {
+          setTrack(fallbackTrack);
+        }
+        return;
+      }
 
       try {
         const details = await fetchVideoDetails(videoId);
         if (cancelled) return;
 
-        const title = details.title || domTitle;
-        const channelName = details.channelTitle || domChannel;
-        const { artistName, trackName } = inferSongInfo(
+        const title = details.title || fallbackTrack.title;
+        const channelName = details.channelTitle || fallbackTrack.channelName;
+        const { artistName, trackName, albumName } = inferSongInfo(
           title,
           channelName,
           details.description,
@@ -49,10 +73,14 @@ export function useWatchTrack(): WatchInfo | null {
           channelName,
           artistName,
           trackName,
+          albumName,
           thumbnail: details.thumbnail,
         });
       } catch (err) {
         console.warn("[useWatchTrack] API fetch failed, using DOM data", err);
+        if (!cancelled) {
+          setTrack(fallbackTrack);
+        }
       }
     };
 

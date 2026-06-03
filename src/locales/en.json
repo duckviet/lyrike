@@ -34,6 +34,14 @@
         "label": "Active Font Weight",
         "hint": "Thickness of the active line. 600–700 is usually most readable."
       },
+      "base_font_weight": {
+        "label": "Base Font Weight",
+        "hint": "Thickness of inactive lines."
+      },
+      "font_style": {
+        "label": "Font Style",
+        "hint": "Style of the lyrics (normal or italic)."
+      },
       "text_align": {
         "label": "Text Align",
         "hint": "Alignment of the lyric lines."
@@ -53,6 +61,10 @@
       "border_radius": {
         "label": "Border Radius",
         "hint": "The corner roundness of the widget."
+      },
+      "line_gap": {
+        "label": "Line Gap",
+        "hint": "Vertical spacing between lyric lines."
       }
     },
     "appearance": {
@@ -86,6 +98,18 @@
         "thumbnail": "Thumbnail Background",
         "video": "Video Background"
       },
+      "layout_mode": {
+        "label": "PiP Layout",
+        "hint": "Choose how content is arranged inside the PiP window.",
+        "classic": "Classic (Lyrics only)",
+        "classic_hint": "Show lyrics in full width with an overlay action bar.",
+        "split": "Split (Info + Lyrics)",
+        "split_hint": "Show thumbnail/title/artist and keep controls under it."
+      },
+      "info_collapse_width": {
+        "label": "Collapse Info Panel Below",
+        "hint": "Hide the info panel when PiP window width is smaller than this value."
+      },
       "dominant_color": {
         "label": "Thumbnail Theme",
         "hint": "Use dominant colors from thumbnail as PiP theme."
@@ -97,6 +121,10 @@
       "video_bg": {
         "label": "Video Background",
         "hint": "Show live video as PiP background (may consume more resources)."
+      },
+      "offset": {
+        "earlier": "{{value}}s earlier",
+        "later": "{{value}}s later"
       }
     },
     "language": {

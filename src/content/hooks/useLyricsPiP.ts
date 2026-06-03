@@ -3,8 +3,8 @@ import {
   PIP_WINDOW_HEIGHT,
   PIP_WINDOW_WIDTH,
 } from "../constants/ui";
-import { PIP_CSS } from "../pipStyles";
 import { preparePiPDocument } from "../utils/pipWindow";
+import tailwindStyles from "../global.css?inline";
 
 /**
  * Manages Picture-in-Picture window for lyrics display.
@@ -46,7 +46,7 @@ export function useLyricsPiP(): {
           height: PIP_WINDOW_HEIGHT,
         });
 
-      const root = preparePiPDocument(pipWindow, PIP_CSS);
+      const root = preparePiPDocument(pipWindow, tailwindStyles);
 
       pipWindowRef.current = pipWindow;
       setPipRoot(root);

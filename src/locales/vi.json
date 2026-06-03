@@ -34,6 +34,14 @@
         "label": "Độ đậm dòng đang hát",
         "hint": "Độ đậm của dòng đang hát. 600–700 thường dễ đọc nhất."
       },
+      "base_font_weight": {
+        "label": "Độ đậm dòng phụ",
+        "hint": "Độ đậm của các dòng không active."
+      },
+      "font_style": {
+        "label": "Kiểu phông",
+        "hint": "Kiểu chữ (thông thường hoặc in nghiêng)."
+      },
       "text_align": {
         "label": "Căn lề",
         "hint": "Căn lề cho các dòng lyric."
@@ -53,6 +61,10 @@
       "border_radius": {
         "label": "Độ bo góc",
         "hint": "Độ bo tròn của khung widget."
+      },
+      "line_gap": {
+        "label": "Khoảng cách dòng",
+        "hint": "Khoảng cách dọc giữa các dòng lyric."
       }
     },
     "appearance": {
@@ -86,6 +98,18 @@
         "thumbnail": "Hình nền video (Thumbnail)",
         "video": "Video đang phát (Live)"
       },
+      "layout_mode": {
+        "label": "Bố cục PiP",
+        "hint": "Chọn cách sắp xếp nội dung trong cửa sổ PiP.",
+        "classic": "Cổ điển (Chỉ lyrics)",
+        "classic_hint": "Hiển thị lyrics toàn chiều rộng với action bar dạng overlay.",
+        "split": "Chia đôi (Info + Lyrics)",
+        "split_hint": "Hiển thị thumbnail/tên bài/ca sĩ và đặt action bar ngay bên dưới."
+      },
+      "info_collapse_width": {
+        "label": "Ẩn info khi nhỏ hơn",
+        "hint": "Tự ẩn khu vực info khi cửa sổ PiP nhỏ hơn giá trị này."
+      },
       "dominant_color": {
         "label": "Màu theme theo thumbnail",
         "hint": "Dùng màu chủ đạo từ thumbnail làm theme cho PiP."
@@ -97,6 +121,10 @@
       "video_bg": {
         "label": "Nền video",
         "hint": "Hiển thị video đang phát làm nền trong PiP (có thể tốn tài nguyên)."
+      },
+      "offset": {
+        "earlier": "Sớm hơn {{value}}s",
+        "later": "Trễ hơn {{value}}s"
       }
     },
     "language": {

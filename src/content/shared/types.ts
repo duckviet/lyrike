@@ -1,9 +1,24 @@
+import {
+  FontStyle,
+  Language,
+  PipBackgroundMode,
+  TextAlign,
+} from "../constants/settings";
+
+export const PIP_LAYOUT_MODE = {
+  CLASSIC: "classic",
+  SPLIT: "split",
+} as const;
+export type PipLayoutMode =
+  (typeof PIP_LAYOUT_MODE)[keyof typeof PIP_LAYOUT_MODE];
+
 export interface WatchInfo {
   videoId: string;
   title: string;
   channelName: string;
   artistName: string;
   trackName: string;
+  albumName?: string;
   thumbnail?: string;
 }
 
@@ -12,8 +27,11 @@ export interface LyricsData {
   plainLyrics: string | null;
   trackName?: string;
   artistName?: string;
+  albumName?: string;
+  duration?: number;
   id?: number;
   instrumental?: boolean;
+  offsetMs?: number;
 }
 
 export interface LyricsState {
@@ -41,6 +59,8 @@ export interface Settings {
   activeTextSize: number;
   visibleLineCount: number;
   activeFontWeight: number;
+  fontWeight: number;
+  fontStyle: FontStyle;
   inactiveOpacity: number;
   lyricSlideDurationSec: number;
   widgetWidth: number;
@@ -48,9 +68,14 @@ export interface Settings {
   backgroundOpacity: number;
   autoScroll: boolean;
   hideFloatingWhenPiPOpen: boolean;
-  pipBackgroundMode: "default" | "color" | "thumbnail" | "video";
-  textAlign: "left" | "center" | "right";
-  language: "vi" | "en" | "auto";
+  pipBackgroundMode: PipBackgroundMode;
+  pipLayoutMode: PipLayoutMode;
+  pipInfoCollapseWidth: number;
+  textAlign: TextAlign;
+  language: Language;
+  showFloatingWidget: boolean;
+  lineGap: number;
+  version: number;
 }
 
 export interface ThemeVars {
