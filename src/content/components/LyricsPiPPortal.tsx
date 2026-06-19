@@ -12,6 +12,7 @@ interface LyricsPiPPortalProps {
   lyricsState: LyricsState;
   syncedLines: LyricLine[];
   activeIndex: number;
+  playbackTime: number;
   settings: Settings | null;
   themeVars: ThemeVars;
   thumbnail?: string;
@@ -36,6 +37,7 @@ export default function LyricsPiPPortal({
   lyricsState,
   syncedLines,
   activeIndex,
+  playbackTime,
   settings,
   themeVars,
   thumbnail,
@@ -253,6 +255,7 @@ export default function LyricsPiPPortal({
               lyricsState={lyricsState}
               syncedLines={syncedLines}
               activeIndex={activeIndex}
+              playbackTime={playbackTime}
               settings={settings}
               contentWidthPx={contentSize.width}
               contentHeightPx={contentSize.height}
@@ -281,6 +284,7 @@ export default function LyricsPiPPortal({
               lyricsState={lyricsState}
               syncedLines={syncedLines}
               activeIndex={activeIndex}
+              playbackTime={playbackTime}
               settings={settings}
               contentWidthPx={contentSize.width}
               contentHeightPx={contentSize.height}

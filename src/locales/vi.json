@@ -81,6 +81,10 @@
       "glide_duration": {
         "label": "Tốc độ cuộn",
         "hint": "Thời gian chuyển giữa các dòng. Giá trị lớn = mượt hơn nhưng chậm hơn."
+      },
+      "prioritize_karaoke": {
+        "label": "Ưu tiên Karaoke",
+        "hint": "Khi bật, ưu tiên tìm kiếm phiên bản lyric karaoke đồng bộ theo từng từ."
       }
     },
     "pip": {

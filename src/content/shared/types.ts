@@ -40,9 +40,16 @@ export interface LyricsState {
   error: string;
 }
 
+export interface LyricWord {
+  text: string;
+  time: number;
+}
+
 export interface LyricLine {
   time: number;
   text: string;
+  isKaraoke?: boolean;
+  words?: LyricWord[];
 }
 
 export interface PreparedLyricLine extends LyricLine {
@@ -75,6 +82,7 @@ export interface Settings {
   language: Language;
   showFloatingWidget: boolean;
   lineGap: number;
+  prioritizeKaraoke: boolean;
   version: number;
 }
 

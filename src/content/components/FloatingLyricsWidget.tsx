@@ -24,6 +24,7 @@ interface FloatingLyricsWidgetProps {
   lyricsState: LyricsState;
   syncedLines: LyricLine[];
   activeIndex: number;
+  playbackTime: number;
   settings: Settings | null;
   onStartDrag: (event: React.MouseEvent<HTMLElement>) => void;
   onOpenPiP: () => void;
@@ -48,6 +49,7 @@ export function FloatingLyricsWidget({
   lyricsState,
   syncedLines,
   activeIndex,
+  playbackTime,
   settings,
   onStartDrag,
   onOpenPiP,
@@ -131,6 +133,7 @@ export function FloatingLyricsWidget({
               lyricsState={lyricsState}
               syncedLines={syncedLines}
               activeIndex={activeIndex}
+              playbackTime={playbackTime}
               settings={settings}
               loadingTextMarginTop={12}
               // activeLineRef={activeLineRef}

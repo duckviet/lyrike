@@ -148,6 +148,7 @@ export default function App(): React.JSX.Element | null {
           lyricsState={lyricsState}
           syncedLines={syncedLines}
           activeIndex={activeIndex}
+          playbackTime={currentTime + offset}
           settings={settings}
           onStartDrag={startDrag}
           onOpenPiP={openLyricsPiP}
@@ -172,6 +173,7 @@ export default function App(): React.JSX.Element | null {
         lyricsState={lyricsState}
         syncedLines={syncedLines}
         activeIndex={activeIndex}
+        playbackTime={currentTime + offset}
         settings={settings}
         themeVars={themeVars}
         thumbnail={track.thumbnail}

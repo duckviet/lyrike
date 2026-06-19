@@ -5,7 +5,7 @@ export default defineManifest({
   name: "__MSG_extName__",
   description: "__MSG_extDesc__",
   default_locale: "en",
-  version: "1.1.0",
+  version: "1.1.1",
   icons: {
     "16": "icons/lyrike-icon@16px.png",
     "48": "icons/lyrike-icon@48px.png",

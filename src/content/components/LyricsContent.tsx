@@ -19,6 +19,7 @@ interface LyricsContentProps {
   lyricsState: LyricsState;
   syncedLines: LyricLine[];
   activeIndex: number;
+  playbackTime: number;
   settings: Settings | null;
   activeLineRef?: RefObject<HTMLDivElement | null>;
   loadingTextMarginTop?: number;
@@ -30,6 +31,7 @@ export const LyricsContent = React.memo(function LyricsContent({
   lyricsState,
   syncedLines,
   activeIndex,
+  playbackTime,
   settings,
   activeLineRef,
   loadingTextMarginTop,
@@ -250,9 +252,10 @@ export const LyricsContent = React.memo(function LyricsContent({
             }}
           >
             <LyricsLines
-              visibleLines={preparedSyncedLines}
+               visibleLines={preparedSyncedLines}
               measuredSlots={measuredSlots}
               activeIndex={activeIndex}
+              playbackTime={playbackTime}
               activeLineRef={activeLineRef}
               textSize={textSize}
               activeTextSize={activeTextSize}

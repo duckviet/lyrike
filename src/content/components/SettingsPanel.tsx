@@ -485,6 +485,13 @@ export function SettingsPanel({
             displayValue={`${(settings.lyricSlideDurationSec ?? 0.5).toFixed(2)}s`}
           />
         </Field>
+
+        <ToggleRow
+          label={t("settings.appearance.prioritize_karaoke.label")}
+          hint={t("settings.appearance.prioritize_karaoke.hint")}
+          checked={settings.prioritizeKaraoke}
+          onChange={(v) => handleChange("prioritizeKaraoke", v)}
+        />
       </Section>
 
       {/* Picture-in-Picture */}

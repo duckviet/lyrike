@@ -81,6 +81,10 @@
       "glide_duration": {
         "label": "Glide Duration",
         "hint": "Time taken to transition between lines. Higher = smoother but slower."
+      },
+      "prioritize_karaoke": {
+        "label": "Prioritize Karaoke",
+        "hint": "When enabled, prioritizes finding karaoke versions of lyrics with word-by-word synchronization."
       }
     },
     "pip": {
