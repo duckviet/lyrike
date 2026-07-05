@@ -5,7 +5,7 @@ export default defineManifest({
   name: "__MSG_extName__",
   description: "__MSG_extDesc__",
   default_locale: "en",
-  version: "1.1.1",
+  version: "1.1.2",
   icons: {
     "16": "icons/lyrike-icon@16px.png",
     "48": "icons/lyrike-icon@48px.png",
@@ -16,6 +16,7 @@ export default defineManifest({
   },
   permissions: ["storage"],
   host_permissions: [
+    "https://music.youtube.com/*",
     "https://www.youtube.com/*",
     "https://lrclib.net/*",
     "https://i.ytimg.com/*",
@@ -28,7 +29,8 @@ export default defineManifest({
   },
   content_scripts: [
     {
-      matches: ["https://www.youtube.com/*"],
+      matches: ["https://music.youtube.com/*",
+        "https://www.youtube.com/*"],
       js: ["src/content/main.tsx"],
       run_at: "document_idle",
     },
@@ -36,7 +38,8 @@ export default defineManifest({
   web_accessible_resources: [
     {
       resources: ["fonts/**/*"],
-      matches: ["https://www.youtube.com/*"],
+      matches: ["https://music.youtube.com/*",
+        "https://www.youtube.com/*"],
     },
   ],
 });

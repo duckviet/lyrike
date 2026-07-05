@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { usePlatform } from "../PlatformContext";
 
 /**
  * Captures the stream from the main YouTube video element.
@@ -9,6 +10,7 @@ export function useVideoStream(
   enabled: boolean,
   videoId?: string | null,
 ): MediaStream | null {
+  const platform = usePlatform();
   const [stream, setStream] = useState<MediaStream | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -37,49 +39,26 @@ export function useVideoStream(
     let lastCapturedVideo: HTMLVideoElement | null = null;
     let recaptureTimer: number | null = null;
 
-    const isAdShowing = () => {
-      return !!document.querySelector(".html5-video-player.ad-showing");
-    };
-
-    const getMainVideoElement = (): HTMLVideoElement | null => {
-      const videos = Array.from(document.querySelectorAll("video"));
-
-      if (videos.length === 0) {
-        return null;
-      }
-
-      /**
-       * Prefer visible, playing-ish videos.
-       * YouTube can temporarily keep multiple video elements around.
-       */
-      const visibleVideos = videos.filter((video) => {
-        const rect = video.getBoundingClientRect();
-
-        return (
-          rect.width > 100 &&
-          rect.height > 100 &&
-          video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
-        );
-      });
-
-      return visibleVideos[0] ?? videos[0] ?? null;
-    };
-
     const captureCurrentVideo = () => {
       if (cancelled || !enabled || !videoId) {
         return;
       }
 
-      if (isAdShowing()) {
+      if (platform.isAdShowing?.()) {
         lastCapturedVideo = null;
         stopCurrentStream();
         return;
       }
 
-      const video = getMainVideoElement();
+      const video = platform.getMediaElement();
 
       if (!video) {
         console.warn("[Lyrics] No video element found to capture stream.");
+        stopCurrentStream();
+        return;
+      }
+
+      if (!(video instanceof HTMLVideoElement)) {
         stopCurrentStream();
         return;
       }
@@ -88,40 +67,26 @@ export function useVideoStream(
         return;
       }
 
-      try {
-        const videoWithCapture = video as HTMLVideoElement & {
-          captureStream?(fps?: number): MediaStream;
-          mozCaptureStream?(fps?: number): MediaStream;
-        };
+      const nextStream = platform.captureVideoStream?.() ?? null;
 
-        const nextStream =
-          videoWithCapture.captureStream?.(15) ??
-          videoWithCapture.mozCaptureStream?.(15) ??
-          null;
+      if (!nextStream) {
+        console.warn(
+          "[Lyrics] video.captureStream is not supported in this browser.",
+        );
+        stopCurrentStream();
+        return;
+      }
 
-        if (!nextStream) {
-          console.warn(
-            "[Lyrics] video.captureStream is not supported in this browser.",
-          );
-          stopCurrentStream();
-          return;
+      lastCapturedVideo = video;
+
+      setStream((oldStream) => {
+        if (oldStream && oldStream !== nextStream) {
+          oldStream.getTracks().forEach((track) => track.stop());
         }
 
-        lastCapturedVideo = video;
-
-        setStream((oldStream) => {
-          if (oldStream && oldStream !== nextStream) {
-            oldStream.getTracks().forEach((track) => track.stop());
-          }
-
-          streamRef.current = nextStream;
-          return nextStream;
-        });
-      } catch (error: unknown) {
-        console.error("[Lyrics] Failed to capture video stream:", error);
-        lastCapturedVideo = null;
-        stopCurrentStream();
-      }
+        streamRef.current = nextStream;
+        return nextStream;
+      });
     };
 
     const scheduleRecapture = () => {
@@ -144,7 +109,7 @@ export function useVideoStream(
      */
     const player = document.querySelector(".html5-video-player");
     const mutationObserver = new MutationObserver(() => {
-      if (isAdShowing()) {
+      if (platform.isAdShowing?.()) {
         lastCapturedVideo = null;
         stopCurrentStream();
       } else {
@@ -164,13 +129,13 @@ export function useVideoStream(
      * mutation on the old player/video element.
      */
     const intervalId = window.setInterval(() => {
-      if (isAdShowing()) {
+      if (platform.isAdShowing?.()) {
         lastCapturedVideo = null;
         stopCurrentStream();
         return;
       }
 
-      const currentVideo = getMainVideoElement();
+      const currentVideo = platform.getMediaElement();
 
       if (!streamRef.current || currentVideo !== lastCapturedVideo) {
         captureCurrentVideo();
@@ -188,6 +153,6 @@ export function useVideoStream(
       window.clearInterval(intervalId);
       stopCurrentStream();
     };
-  }, [enabled, videoId]);
+  }, [enabled, platform, videoId]);
   return stream;
 }

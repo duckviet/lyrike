@@ -7,6 +7,17 @@ import {
 
 export { TITLE_NOISE_WORDS };
 
+const COLLAB_KEYWORDS = ["feat", "ft", "cùng với"];
+const COLLAB_PATTERN = COLLAB_KEYWORDS.join("|");
+const COLLAB_SEGMENT_RE = new RegExp(
+  String.raw`\s*[[(]?\s*(?:${COLLAB_PATTERN})\.?\s+[^\])\]]+[)\]]?`,
+  "gi",
+);
+const COLLAB_TRAILING_RE = new RegExp(
+  String.raw`\s+(?:${COLLAB_PATTERN})\.?\s+.*$`,
+  "i",
+);
+
 export const NOISE_PATTERN = TITLE_NOISE_WORDS.join("|");
 export const NOISE_RE_BRACKET_SQ = new RegExp(
   `\\[[^\\]]*(?:${NOISE_PATTERN})[^\\]]*\\]`,
@@ -68,8 +79,12 @@ export function cleanTrackName(value: string): string {
   result = result.replace(/\s*\[\s*(?:feat|ft)\.?\s[^\]]*\]/gi, "");
   result = result.replace(/\s*\(\s*(?:feat|ft)\.?\s[^)]*\)/gi, "");
 
+  // Remove localized collaboration markers like "(cùng với Jay Rock)"
+  result = result.replace(COLLAB_SEGMENT_RE, "");
+
   // Remove trailing "feat./ft. ..."
   result = result.replace(/\s+(?:feat|ft)\.?\s.*/i, "");
+  result = result.replace(COLLAB_TRAILING_RE, "");
 
   return result.replace(/\s+/g, " ").trim();
 }
@@ -122,7 +137,9 @@ export function normalizeChannelToArtist(channel: string): string {
 export function extractPrimaryArtist(artist: string): string {
   const withoutFeat = artist
     .replace(/\s+(?:feat|ft)\.?\s.*/i, "")
-    .replace(/\s*[[(]\s*(?:feat|ft)\.?\s[^\])]*[\])]/gi, "");
+    .replace(/\s*[[(]\s*(?:feat|ft)\.??\s[^\])]*[\])]/gi, "")
+    .replace(COLLAB_SEGMENT_RE, "")
+    .replace(COLLAB_TRAILING_RE, "");
   return withoutFeat.split(/\s+(?:x|&)\s+|,\s*/i)[0].trim();
 }
 
@@ -130,5 +147,6 @@ export function hasArtistCollabPattern(segment: string): boolean {
   const parts = segment.split(/\s+(?:x|×|X)\s+/);
   if (parts.length >= 2) return true;
   if (/\b(?:feat|ft)\.?\s/i.test(segment)) return true;
+  if (/\bcùng với\b/i.test(segment)) return true;
   return false;
 }

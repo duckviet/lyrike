@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePlatform } from "../PlatformContext";
 import {
   CURRENT_TIME_TICK_MS,
   VIDEO_SYNC_INTERVAL_MS,
@@ -11,7 +12,7 @@ interface SyncAnchor {
   playbackRate: number;
 }
 
-function createSyncAnchor(video: HTMLVideoElement): SyncAnchor {
+function createSyncAnchor(video: HTMLMediaElement): SyncAnchor {
   return {
     videoTime: video.currentTime || 0,
     epochMs: Date.now(),
@@ -20,15 +21,12 @@ function createSyncAnchor(video: HTMLVideoElement): SyncAnchor {
   };
 }
 
-function getVideoElement(): HTMLVideoElement | null {
-  return document.querySelector("video");
-}
-
 /**
  * Tracks current playback time of the video with synchronization.
  * @param videoId Optional video ID to track. Resets when changed.
  */
 export function useVideoCurrentTime(videoId?: string | null): number {
+  const platform = usePlatform();
   const [syncAnchor, setSyncAnchor] = useState<SyncAnchor | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
 
@@ -46,7 +44,7 @@ export function useVideoCurrentTime(videoId?: string | null): number {
     }
 
     const sync = () => {
-      const video = getVideoElement();
+      const video = platform.getMediaElement();
 
       if (!video) {
         return;
@@ -62,7 +60,7 @@ export function useVideoCurrentTime(videoId?: string | null): number {
       VIDEO_SYNC_INTERVAL_MS,
     );
 
-    const video = getVideoElement();
+    const video = platform.getMediaElement();
 
     if (video) {
       video.addEventListener("play", sync);
@@ -83,7 +81,7 @@ export function useVideoCurrentTime(videoId?: string | null): number {
         video.removeEventListener("ratechange", sync);
       }
     };
-  }, [videoId]);
+  }, [platform, videoId]);
 
   useEffect(() => {
     if (!syncAnchor) {

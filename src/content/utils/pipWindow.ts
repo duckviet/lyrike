@@ -6,6 +6,7 @@ export function preparePiPDocument(
   tailwindStyles?: string,
 ): HTMLElement {
   const pipDocument = pipWindow.document;
+  pipDocument.title = "lyrike";
 
   // Clear existing content
   pipDocument.head.innerHTML = "";
