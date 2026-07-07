@@ -139,6 +139,13 @@
       "auto": "System Default",
       "vi": "Vietnamese",
       "en": "English"
+    },
+    "readme": {
+      "title": "Readme",
+      "source_desc_1": "Lyrics data is sourced from",
+      "source_desc_2": "(thanks to the great open-source project from",
+      "source_desc_3": ").",
+      "support_desc": "Lyrike now works on YouTube and YouTube Music:"
     }
   }
 }

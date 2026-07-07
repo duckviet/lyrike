@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PIP_LAYOUT_MODE, Settings } from "../shared/types";
 import { FONTS } from "../constants/settings";
@@ -95,6 +95,82 @@ function Section({
   );
 }
 
+function CollapsibleSection({
+  title,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <section className="flex flex-col py-4 border-b border-border-subtle last:border-b-0 last:pb-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center justify-between w-full text-left cursor-pointer group py-1 select-none border-none bg-transparent outline-none"
+      >
+        <h3 className="text-[12px] font-semibold uppercase tracking-wider text-text-accent group-hover:text-text-accent/80 transition-colors duration-150">
+          {title}
+        </h3>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`text-text-secondary group-hover:text-text-primary transition-transform duration-200 ${
+            isOpen ? "rotate-180" : "rotate-0"
+          }`}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      <div
+        className={`grid transition-all duration-200 ease-in-out ${
+          isOpen ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="flex flex-col gap-3 text-[13px] text-text-primary leading-normal">
+            {children}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function YouTubeLogo({ className = "h-3.5 w-auto" }: { className?: string }): React.JSX.Element {
+  return (
+    <svg viewBox="1.376 1.326 243.258 170.273" className={className} xmlns="http://www.w3.org/2000/svg">
+      <g fill="none" fillRule="evenodd">
+        <path d="m239.564 27.912c-2.786-10.449-11.03-18.69-21.516-21.516-18.962-5.07-95.043-5.07-95.043-5.07s-76.042 0-95.043 5.07c-10.448 2.786-18.692 11.03-21.516 21.516-5.07 18.962-5.07 58.55-5.07 58.55s0 39.59 5.07 58.551c2.786 10.45 11.029 18.691 21.516 21.516 19 5.07 95.043 5.07 95.043 5.07s76.08 0 95.043-5.07c10.449-2.786 18.69-11.029 21.516-21.516 5.07-18.962 5.07-58.55 5.07-58.55s0-39.589-5.07-58.55z" fill="#f00"/>
+        <path d="m98.703 122.955 63.194-36.493-63.194-36.492z" fill="#fff"/>
+      </g>
+    </svg>
+  );
+}
+
+function YouTubeMusicLogo({ className = "h-3.5 w-auto" }: { className?: string }): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 204 204" className={className} xmlns="http://www.w3.org/2000/svg">
+      <circle cx="102" cy="102" r="102" fill="red"/>
+      <path d="M512,463.36A48.64,48.64,0,1,1,463.36,512,48.69,48.69,0,0,1,512,463.36m0-4.68A53.32,53.32,0,1,0,565.32,512,53.31,53.31,0,0,0,512,458.68Z" transform="translate(-410 -410)" fill="#fff"/>
+      <path d="M493.45,538.66l45.2-27.82-45.2-25.5Z" transform="translate(-410 -410)" fill="#fff"/>
+    </svg>
+  );
+}
+
+
 function Field({
   label,
   hint,
@@ -113,11 +189,11 @@ function Field({
             <div className="rounded-full text-text-secondary text-[12px] flex items-center justify-center cursor-default select-none leading-none">
               ⓘ
             </div>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[999]">
+            <div className="absolute bottom-full left-[-8px] mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[999]">
               {hint}
               {/* Arrow */}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-border-subtle" />
-              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-bg-secondary" />
+              <div className="absolute top-full left-[14px] -translate-x-1/2 border-4 border-transparent border-t-border-subtle" />
+              <div className="absolute top-full left-[14px] -translate-x-1/2 -mt-px border-4 border-transparent border-t-bg-secondary" />
             </div>
           </div>
         )}
@@ -215,6 +291,7 @@ export function SettingsPanel({
   onReset,
 }: SettingsPanelProps): React.JSX.Element {
   const { t, i18n } = useTranslation();
+  const [isReadmeOpen, setIsReadmeOpen] = useState(false);
 
   useEffect(() => {
     if (settings.language === "auto") {
@@ -265,6 +342,54 @@ export function SettingsPanel({
 
   return (
     <div className="flex flex-col gap-4">
+       {/* Readme */}
+      <CollapsibleSection
+        title={t("settings.readme.title")}
+        isOpen={isReadmeOpen}
+        onToggle={() => setIsReadmeOpen(!isReadmeOpen)}
+      >
+        <ul className="list-disc pl-4 flex flex-col gap-3 text-[12px] text-text-secondary leading-relaxed">
+          <li>
+            <span>
+              {t("settings.readme.source_desc_1")}{" "}
+              <a
+                href="https://lrclib.net/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-text-accent hover:underline font-medium"
+              >
+                LRCLIB
+              </a>{" "}
+              {t("settings.readme.source_desc_2")}{" "}
+              <a
+                href="https://github.com/tranxuanthang/lrclib"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-text-accent hover:underline font-medium"
+              >
+                lrclib
+              </a>
+              {t("settings.readme.source_desc_3")}
+            </span>
+          </li>
+          <li>
+            <div className="flex flex-col gap-2">
+              <span>{t("settings.readme.support_desc")}</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-border-subtle text-[11px] font-medium text-text-primary">
+                  <YouTubeLogo className="h-3.5 w-auto" />
+                  <span>YouTube</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-border-subtle text-[11px] font-medium text-text-primary">
+                  <YouTubeMusicLogo className="h-[13px] w-auto" />
+                  <span>YouTube Music</span>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </CollapsibleSection>
+
       {/* Typography */}
       <Section
         title={t("settings.typography.title")}

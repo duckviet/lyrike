@@ -139,6 +139,13 @@
       "auto": "Theo hệ thống",
       "vi": "Tiếng Việt",
       "en": "English"
+    },
+    "readme": {
+      "title": "Readme",
+      "source_desc_1": "Dữ liệu lời bài hát được cung cấp bởi",
+      "source_desc_2": "(cảm ơn dự án nguồn mở tuyệt vời từ",
+      "source_desc_3": ").",
+      "support_desc": "Lyrike hiện đã hoạt động trên cả YouTube và YouTube Music:"
     }
   }
 }
