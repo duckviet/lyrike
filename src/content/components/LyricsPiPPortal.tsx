@@ -19,6 +19,7 @@ interface LyricsPiPPortalProps {
   artist?: string;
   title?: string;
   lyricsId?: number;
+  videoId?: string;
   videoStream?: MediaStream;
   playerControls: {
     isPaused: boolean;
@@ -44,6 +45,7 @@ export default function LyricsPiPPortal({
   artist,
   title,
   lyricsId,
+  videoId,
   videoStream,
   playerControls,
 }: LyricsPiPPortalProps): React.JSX.Element | null {
@@ -266,6 +268,9 @@ export default function LyricsPiPPortal({
             isVisible={isHovered}
             playerControls={playerControls}
             lyricsId={lyricsId}
+            artist={artist}
+            title={title}
+            videoId={videoId}
           />
         </div>
       ) : (
@@ -295,6 +300,9 @@ export default function LyricsPiPPortal({
             isVisible={isHovered}
             playerControls={playerControls}
             lyricsId={lyricsId}
+            artist={artist}
+            title={title}
+            videoId={videoId}
           />
         </>
       )}

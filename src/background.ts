@@ -259,17 +259,107 @@ export async function findLyrics(payload: LyricsPayload): Promise<LyricsData | n
   return null;
 }
 
+async function collectDiagnostics(
+  trackName?: string,
+  artistName?: string,
+  albumName?: string,
+): Promise<Record<string, unknown>> {
+  const manifest = chrome.runtime.getManifest();
+  let cachedValue: unknown = null;
+
+  if (trackName) {
+    const cacheKey = `lyrics:${normalizeText(artistName)}:${normalizeText(trackName)}:${normalizeText(albumName)}`;
+    try {
+      const cached = await chrome.storage.local.get(cacheKey);
+      cachedValue = cached[cacheKey] ?? null;
+    } catch (e) {
+      console.error("[Lyrics background] Failed to load cache entry:", e);
+    }
+  }
+
+  let settings: Settings | undefined;
+  try {
+    const s = await chrome.storage.local.get("lyrics_extension_settings");
+    settings = s["lyrics_extension_settings"] as Settings | undefined;
+  } catch (e) {
+    console.error("[Lyrics background] Failed to load settings for diagnostics:", e);
+  }
+
+  return {
+    extensionVersion: manifest.version,
+    browserVersion: typeof navigator !== "undefined" ? navigator.userAgent : "Unknown",
+    cachedEntry: cachedValue,
+    settings,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+async function handleReportIssue(payload: {
+  description: string;
+  trackName?: string;
+  artistName?: string;
+  albumName?: string;
+  videoUrl?: string;
+  lyricsId?: number;
+  thumbnail?: string;
+}): Promise<void> {
+  const diagnostics = await collectDiagnostics(
+    payload.trackName,
+    payload.artistName,
+    payload.albumName,
+  );
+
+  const workerUrl =
+    (import.meta.env?.VITE_REPORT_PROXY_URL as string) ||
+    "https://lyrike-report-proxy.duckviet.workers.dev";
+
+  const response = await fetch(workerUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      description: payload.description,
+      trackName: payload.trackName,
+      artistName: payload.artistName,
+      albumName: payload.albumName,
+      videoUrl: payload.videoUrl,
+      lyricsId: payload.lyricsId,
+      thumbnail: payload.thumbnail,
+      diagnostics,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `Status code ${response.status}`);
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type !== "FETCH_LYRICS") return;
+  if (message.type === "FETCH_LYRICS") {
+    findLyrics(message.payload)
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((error) =>
+        sendResponse({
+          ok: false,
+          error: error.message || "Unknown error",
+        }),
+      );
+    return true;
+  }
 
-  findLyrics(message.payload)
-    .then((data) => sendResponse({ ok: true, data }))
-    .catch((error) =>
-      sendResponse({
-        ok: false,
-        error: error.message || "Unknown error",
-      }),
-    );
+  if (message.type === "REPORT_ISSUE") {
+    handleReportIssue(message.payload)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) =>
+        sendResponse({
+          ok: false,
+          error: error.message || "Unknown error",
+        }),
+      );
+    return true;
+  }
 
-  return true;
+  return false;
 });

@@ -159,6 +159,8 @@ export default function App(): React.JSX.Element | null {
           onTabChange={setActiveTab}
           onSettingsChange={updateSettings}
           onResetSettings={resetAllSettings}
+          track={track}
+          lyricsId={lyricsState.data?.id || undefined}
         />
       ) : (
         <ReopenLyricsButton
@@ -180,6 +182,7 @@ export default function App(): React.JSX.Element | null {
         artist={artistLabel}
         title={title}
         lyricsId={typeof lyricsState.data?.id === "number" ? lyricsState.data.id : undefined}
+        videoId={track.videoId}
         videoStream={videoStream ?? undefined}
         playerControls={{
           isPaused,

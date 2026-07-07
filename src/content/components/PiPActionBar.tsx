@@ -7,6 +7,7 @@ interface PiPActionBarProps {
   artist?: string;
   title?: string;
   lyricsId?: number;
+  videoId?: string;
   placement?: "overlay" | "inline";
   playerControls: {
     isPaused: boolean;
@@ -27,12 +28,49 @@ function lyricsOffsetKey(id: number): string {
 export const PiPActionBar: React.FC<PiPActionBarProps> = ({
   isVisible,
   lyricsId,
+  artist,
+  title,
+  videoId,
   placement = "overlay",
   playerControls,
 }) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSuccess, setIsSuccess] = React.useState(false);
+
+  const handleQuickReport = () => {
+    setIsSubmitting(true);
+    const videoUrl = videoId
+      ? `https://www.youtube.com/watch?v=${videoId}`
+      : "";
+
+    chrome.runtime.sendMessage(
+      {
+        type: "REPORT_ISSUE",
+        payload: {
+          description: "Missing lyric",
+          trackName: title || "",
+          artistName: artist || "",
+          albumName: "",
+          videoUrl,
+          lyricsId,
+        },
+      },
+      (response) => {
+        setIsSubmitting(false);
+        if (response && response.ok) {
+          setIsSuccess(true);
+          setTimeout(() => setIsSuccess(false), 3000);
+        } else {
+          const errMsg = response?.error || "Unknown error";
+          alert(`Report failed: ${errMsg}`);
+        }
+      },
+    );
+  };
 
   // Debounce save offset (10s)
   useEffect(() => {
@@ -285,6 +323,91 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
             +0.5s
           </button>
         </div>
+
+        <div style={dividerStyle} />
+
+        {/* Quick Report Button */}
+        <button
+          onClick={handleQuickReport}
+          style={{
+            ...btnStyle,
+            width: 24,
+            height: 24,
+            background: isSubmitting
+              ? "rgba(255,255,255,0.05)"
+              : isSuccess
+                ? "rgba(46,125,50,0.3)"
+                : "rgba(255,255,255,0.12)",
+            color: isSuccess ? "#81c784" : "rgba(255,255,255,0.9)",
+            position: "relative",
+          }}
+          title={
+            isSuccess
+              ? t("settings.report.success")
+              : t("settings.report.report_desc")
+          }
+          disabled={isSubmitting || isSuccess}
+          onMouseEnter={(e) => {
+            if (!isSubmitting && !isSuccess)
+              e.currentTarget.style.background = "rgba(255,255,255,0.2)";
+          }}
+          onMouseLeave={(e) => {
+            if (!isSubmitting && !isSuccess)
+              e.currentTarget.style.background = "rgba(255,255,255,0.12)";
+          }}
+        >
+          {isSubmitting ? (
+            <svg
+              className="animate-spin"
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              style={{ display: "block" }}
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+          ) : isSuccess ? (
+            <svg
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              style={{ display: "block" }}
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ display: "block" }}
+            >
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+              <line x1="4" y1="22" x2="4" y2="15" />
+            </svg>
+          )}
+        </button>
       </div>
     </>
   );

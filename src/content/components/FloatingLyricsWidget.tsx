@@ -9,6 +9,7 @@ import {
   LyricLine,
   Settings,
   ThemeVars,
+  WatchInfo,
 } from "../shared/types";
 
 interface FloatingLyricsWidgetProps {
@@ -34,6 +35,8 @@ interface FloatingLyricsWidgetProps {
   onSettingsChange: (settings: Settings) => void;
   onResetSettings: () => void;
   themeVars?: ThemeVars;
+  track?: WatchInfo | null;
+  lyricsId?: number;
 }
 
 export function FloatingLyricsWidget({
@@ -59,6 +62,8 @@ export function FloatingLyricsWidget({
   onSettingsChange,
   onResetSettings,
   themeVars,
+  track,
+  lyricsId,
 }: FloatingLyricsWidgetProps): React.JSX.Element {
   const contentBodyRef = useRef<HTMLDivElement | null>(null);
   const [contentWidthPx, setContentWidthPx] = useState<number>(
@@ -146,6 +151,8 @@ export function FloatingLyricsWidget({
               settings={settings}
               onChange={onSettingsChange}
               onReset={onResetSettings}
+              track={track}
+              lyricsId={lyricsId}
             />
           )}
         </div>
