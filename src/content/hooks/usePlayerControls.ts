@@ -1,47 +1,53 @@
 import { useState, useEffect, useCallback } from "react";
+import { usePlatform } from "../PlatformContext";
 
 export function usePlayerControls() {
+  const platform = usePlatform();
   const [isPaused, setIsPaused] = useState(true);
   const [volume, setVolumeState] = useState(1);
   const [offset, setOffset] = useState(0);
 
   useEffect(() => {
-    const findVideo = () => document.querySelector("video");
-    
-    let video = findVideo();
+    if (!platform.isPlayerPage()) {
+      return;
+    }
+
+    const findMedia = () => platform.getMediaElement();
+
+    let media = findMedia();
     
     const updateState = () => {
-      if (video) {
-        setIsPaused(video.paused);
-        setVolumeState(video.volume);
+      if (media) {
+        setIsPaused(media.paused);
+        setVolumeState(media.volume);
       }
     };
 
-    const setupListeners = (v: HTMLVideoElement) => {
-      v.addEventListener("play", updateState);
-      v.addEventListener("pause", updateState);
-      v.addEventListener("volumechange", updateState);
+    const setupListeners = (value: HTMLVideoElement | HTMLAudioElement) => {
+      value.addEventListener("play", updateState);
+      value.addEventListener("pause", updateState);
+      value.addEventListener("volumechange", updateState);
     };
 
-    const cleanupListeners = (v: HTMLVideoElement) => {
-      v.removeEventListener("play", updateState);
-      v.removeEventListener("pause", updateState);
-      v.removeEventListener("volumechange", updateState);
+    const cleanupListeners = (value: HTMLVideoElement | HTMLAudioElement) => {
+      value.removeEventListener("play", updateState);
+      value.removeEventListener("pause", updateState);
+      value.removeEventListener("volumechange", updateState);
     };
 
-    if (video) {
-      setupListeners(video);
+    if (media) {
+      setupListeners(media);
       updateState();
     }
 
-    // Handle dynamic video elements (e.g. navigation on YouTube)
+    // Handle dynamic media elements (e.g. navigation on YouTube / YouTube Music)
     const observer = new MutationObserver(() => {
-      const newVideo = findVideo();
-      if (newVideo !== video) {
-        if (video) cleanupListeners(video);
-        video = newVideo;
-        if (video) {
-          setupListeners(video);
+      const newMedia = findMedia();
+      if (newMedia !== media) {
+        if (media) cleanupListeners(media);
+        media = newMedia;
+        if (media) {
+          setupListeners(media);
           updateState();
         }
       }
@@ -50,48 +56,26 @@ export function usePlayerControls() {
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      if (video) cleanupListeners(video);
+      if (media) cleanupListeners(media);
       observer.disconnect();
     };
-  }, []);
+  }, [platform]);
 
   const togglePlay = useCallback(() => {
-    const video = document.querySelector("video");
-    if (!video) return;
-
-    if (video.paused) {
-      video.play();
-    } else {
-      video.pause();
-    }
-  }, []);
+    platform.togglePlay();
+  }, [platform]);
 
   const nextTrack = useCallback(() => {
-    const nextBtn = document.querySelector<HTMLButtonElement>(".ytp-next-button");
-    if (nextBtn) nextBtn.click();
-  }, []);
+    platform.nextTrack();
+  }, [platform]);
 
   const prevTrack = useCallback(() => {
-    // YouTube usually doesn't have a simple "prev" button that always goes to previous track.
-    // Sometimes it's the "back" button in the browser or it's handled by YouTube's internal state.
-    // However, there is often a .ytp-prev-button if in a playlist.
-    const prevBtn = document.querySelector<HTMLButtonElement>(".ytp-prev-button");
-    if (prevBtn) {
-      prevBtn.click();
-    } else {
-      // If no prev button, maybe just seek to 0 if at start? 
-      // Or just do nothing if not available.
-      const video = document.querySelector("video");
-      if (video) video.currentTime = 0;
-    }
-  }, []);
+    platform.prevTrack();
+  }, [platform]);
 
   const setVolume = useCallback((value: number) => {
-    const video = document.querySelector("video");
-    if (video) {
-      video.volume = Math.max(0, Math.min(1, value));
-    }
-  }, []);
+    platform.setVolume(value);
+  }, [platform]);
 
   const adjustOffset = useCallback((delta: number) => {
     setOffset((prev) => prev + delta);

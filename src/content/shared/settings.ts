@@ -30,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   language: LANGUAGE.EN,
   showFloatingWidget: true,
   lineGap: 10,
+  prioritizeKaraoke: false,
   version: CURRENT_SETTINGS_VERSION,
 };
 
@@ -53,10 +54,11 @@ export async function loadSettings(): Promise<Settings> {
 
       // Validation logic: Nếu settings quá cũ hoặc có giá trị không hợp lệ
       const isInvalid =
-        !merged.version ||
+         !merged.version ||
         merged.version < CURRENT_SETTINGS_VERSION ||
         typeof merged.lineGap !== "number" ||
         typeof merged.pipInfoCollapseWidth !== "number" ||
+        typeof merged.prioritizeKaraoke !== "boolean" ||
         (merged.pipLayoutMode !== PIP_LAYOUT_MODE.CLASSIC &&
           merged.pipLayoutMode !== PIP_LAYOUT_MODE.SPLIT);
 
@@ -91,6 +93,9 @@ export async function loadSettings(): Promise<Settings> {
           merged.textAlign = DEFAULT_SETTINGS.textAlign;
         if (!VALID_FONT_STYLES.includes(merged.fontStyle))
           merged.fontStyle = DEFAULT_SETTINGS.fontStyle;
+        if (typeof merged.prioritizeKaraoke !== "boolean") {
+          merged.prioritizeKaraoke = DEFAULT_SETTINGS.prioritizeKaraoke;
+        }
       }
 
       return merged;

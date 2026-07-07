@@ -81,6 +81,10 @@
       "glide_duration": {
         "label": "Tốc độ cuộn",
         "hint": "Thời gian chuyển giữa các dòng. Giá trị lớn = mượt hơn nhưng chậm hơn."
+      },
+      "prioritize_karaoke": {
+        "label": "Ưu tiên Karaoke",
+        "hint": "Khi bật, ưu tiên tìm kiếm phiên bản lyric karaoke đồng bộ theo từng từ."
       }
     },
     "pip": {
@@ -135,6 +139,13 @@
       "auto": "Theo hệ thống",
       "vi": "Tiếng Việt",
       "en": "English"
+    },
+    "readme": {
+      "title": "Readme",
+      "source_desc_1": "Dữ liệu lời bài hát được cung cấp bởi",
+      "source_desc_2": "(cảm ơn dự án nguồn mở tuyệt vời từ",
+      "source_desc_3": ").",
+      "support_desc": "Lyrike hiện đã hoạt động trên cả YouTube và YouTube Music:"
     }
   }
 }

@@ -1,4 +1,4 @@
-import { LyricLine, PreparedLyricLine } from "../shared/types";
+import { LyricLine, PreparedLyricLine, LyricWord } from "../shared/types";
 import { layout, prepare } from "@chenglou/pretext";
 
 export const DEFAULT_FONT_FAMILY =
@@ -62,7 +62,7 @@ export function parseSyncedLyrics(lrcText: string = ""): LyricLine[] {
       const matches = [
         ...rawLine.matchAll(/\[(\d{1,2}):(\d{2})(?:\.(\d{2,3}))?\]/g),
       ];
-      const text = rawLine.replace(/\[[^\]]+\]/g, "").trim();
+      const rawText = rawLine.replace(/\[[^\]]+\]/g, "").trim();
 
       return matches.map((match) => {
         const minute = Number(match[1] || 0);
@@ -72,8 +72,34 @@ export function parseSyncedLyrics(lrcText: string = ""): LyricLine[] {
           fractionRaw.length === 3
             ? Number(fractionRaw) / 1000
             : Number(fractionRaw) / 100;
+        const time = minute * 60 + second + fraction;
 
-        return { time: minute * 60 + second + fraction, text };
+        const isKaraoke = /<\d{1,2}:\d{2}(?:\.\d{2,3})?>/.test(rawText);
+        let words: LyricWord[] = [];
+        const text = isKaraoke ? rawText.replace(/<[^>]+>/g, "") : rawText;
+
+        if (isKaraoke) {
+          const wordMatches = [...rawText.matchAll(/<(\d{1,2}):(\d{2})(?:\.(\d{2,3}))?>([^<]*)/g)];
+          words = wordMatches.map((m) => {
+            const wMinute = Number(m[1] || 0);
+            const wSecond = Number(m[2] || 0);
+            const wFractionRaw = m[3] || "0";
+            const wFraction =
+              wFractionRaw.length === 3
+                ? Number(wFractionRaw) / 1000
+                : Number(wFractionRaw) / 100;
+            const wordTime = wMinute * 60 + wSecond + wFraction;
+            const wordText = m[4];
+            return { time: wordTime, text: wordText };
+          });
+        }
+
+        return {
+          time,
+          text,
+          isKaraoke,
+          ...(isKaraoke ? { words } : {}),
+        };
       });
     })
     .sort((a, b) => a.time - b.time);

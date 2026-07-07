@@ -81,6 +81,10 @@
       "glide_duration": {
         "label": "Glide Duration",
         "hint": "Time taken to transition between lines. Higher = smoother but slower."
+      },
+      "prioritize_karaoke": {
+        "label": "Prioritize Karaoke",
+        "hint": "When enabled, prioritizes finding karaoke versions of lyrics with word-by-word synchronization."
       }
     },
     "pip": {
@@ -135,6 +139,13 @@
       "auto": "System Default",
       "vi": "Vietnamese",
       "en": "English"
+    },
+    "readme": {
+      "title": "Readme",
+      "source_desc_1": "Lyrics data is sourced from",
+      "source_desc_2": "(thanks to the great open-source project from",
+      "source_desc_3": ").",
+      "support_desc": "Lyrike now works on YouTube and YouTube Music:"
     }
   }
 }

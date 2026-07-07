@@ -230,4 +230,13 @@ Album: Gặp Lại
     expect(result.artistName).toBe("Binz");
     expect(result.trackName).toBe("Em");
   });
+
+  test("Localized collaboration markers should be stripped from track names", () => {
+    const title = "Money Trees (cùng với Jay Rock)";
+    const channelName = "Kendrick Lamar";
+
+    const result = inferSongInfo(title, channelName);
+    expect(result.artistName).toBe("Kendrick Lamar");
+    expect(result.trackName).toBe("Money Trees");
+  });
 });

@@ -15,7 +15,7 @@ export function ReopenLyricsButton({
       onClick={onClick}
       aria-label="Reopen lyrics widget"
     >
-      <LyricsIcon /> Lyrics
+      <LyricsIcon /> Lyrike
     </button>
   );
 }

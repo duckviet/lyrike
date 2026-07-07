@@ -96,6 +96,13 @@ describe("background helper functions", () => {
       // synced(100) + partial track(4) + partial artist(4) + partial album(4) = 112
       expect(scorePartial).toBe(112);
     });
+
+    test("should award karaoke bonus if prioritizeKaraoke is enabled and result contains karaoke", () => {
+      const karaokeResult = { ...dummyResult, trackName: "Em - Karaoke" };
+      const scoreWithPrioritize = scoreResult(karaokeResult, "Em", "Binz", "Gap Lai", true);
+      const scoreWithoutPrioritize = scoreResult(karaokeResult, "Em", "Binz", "Gap Lai", false);
+      expect(scoreWithPrioritize).toBe(scoreWithoutPrioritize + 150);
+    });
   });
 
   describe("resolveCachedEntry", () => {

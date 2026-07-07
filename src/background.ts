@@ -1,4 +1,4 @@
-import { LyricsData } from "./content/shared/types";
+import { LyricsData, Settings } from "./content/shared/types";
 import { normalizeChannelToArtist } from "./content/utils/trackInfo";
 
 export const SYNCED_LYRICS_BONUS = 100;
@@ -24,6 +24,7 @@ export function scoreResult(
   trackName: string,
   artistName: string,
   albumName?: string,
+  prioritizeKaraoke: boolean = false,
 ): number {
   const syncedLyrics = result.syncedLyrics;
   const rt = normalizeText(result.trackName || "");
@@ -42,6 +43,10 @@ export function scoreResult(
   if (t && (rt.includes(t) || t.includes(rt))) score += PARTIAL_MATCH_BONUS;
   if (a && (ra.includes(a) || a.includes(ra))) score += PARTIAL_MATCH_BONUS;
   if (b && (rb.includes(b) || b.includes(rb))) score += PARTIAL_MATCH_BONUS;
+
+  if (prioritizeKaraoke && rt.includes("karaoke")) {
+    score += 150;
+  }
 
   return score;
 }
@@ -120,11 +125,10 @@ export async function resolveCachedEntry(
   return null;
 }
 
-export async function searchOnce({
-  trackName,
-  artistName,
-  albumName,
-}: SearchCandidate): Promise<LyricsData | null> {
+export async function searchOnce(
+  { trackName, artistName, albumName }: SearchCandidate,
+  prioritizeKaraoke: boolean = false,
+): Promise<LyricsData | null> {
   if (!trackName) return null;
 
   const cacheKey = `lyrics:${normalizeText(artistName)}:${normalizeText(trackName)}:${normalizeText(albumName)}`;
@@ -166,8 +170,8 @@ export async function searchOnce({
       .slice()
       .sort(
         (a, b) =>
-          scoreResult(b, trackName, artistName, albumName) -
-          scoreResult(a, trackName, artistName, albumName),
+          scoreResult(b, trackName, artistName, albumName, prioritizeKaraoke) -
+          scoreResult(a, trackName, artistName, albumName, prioritizeKaraoke),
       )[0] || null;
 
   if (typeof best?.id === "number") {
@@ -203,17 +207,38 @@ export interface LyricsPayload {
 export async function findLyrics(payload: LyricsPayload): Promise<LyricsData | null> {
   const { trackName, artistName, channelName, originalTitle, albumName } = payload;
 
+  let prioritizeKaraoke = false;
+  try {
+    const settingsResult = await chrome.storage.local.get("lyrics_extension_settings");
+    const storedSettings = settingsResult["lyrics_extension_settings"] as Settings | undefined;
+    prioritizeKaraoke = storedSettings?.prioritizeKaraoke ?? false;
+  } catch (e) {
+    console.error("[Lyrics background] Failed to load settings:", e);
+  }
+
   // Normalize channel name using imported module function
   const normalizedChannel = normalizeChannelToArtist(channelName);
 
-  const candidates: SearchCandidate[] = [
+  const baseCandidates: SearchCandidate[] = [
     { trackName, artistName, albumName },
     { trackName, artistName, albumName: "" },
     { trackName, artistName: normalizedChannel, albumName: "" },
     { trackName, artistName: channelName, albumName: "" },
     { trackName, artistName: "", albumName: "" },
     { trackName: originalTitle, artistName: "", albumName: "" },
-  ].filter((item, index, arr) => {
+  ];
+
+  const candidates: SearchCandidate[] = [];
+  if (prioritizeKaraoke && trackName && !trackName.toLowerCase().includes("karaoke")) {
+    candidates.push({
+      trackName: `${trackName} - Karaoke`,
+      artistName,
+      albumName,
+    });
+  }
+  candidates.push(...baseCandidates);
+
+  const filteredCandidates = candidates.filter((item, index, arr) => {
     if (!item.trackName) return false;
     return (
       arr.findIndex(
@@ -225,8 +250,8 @@ export async function findLyrics(payload: LyricsPayload): Promise<LyricsData | n
     );
   });
   console.log(payload)
-  for (const candidate of candidates) {
-    const result = await searchOnce(candidate);
+  for (const candidate of filteredCandidates) {
+    const result = await searchOnce(candidate, prioritizeKaraoke);
     console.log(candidate, result);
     if (result) return result;
   }

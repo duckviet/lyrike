@@ -15,7 +15,7 @@ import { useLyricsPiP } from "./hooks/useLyricsPiP";
 import { useLyricsSettings } from "./hooks/useLyricsSettings";
 import { useVideoCurrentTime } from "./hooks/useVideoCurrentTime";
 import { useWidgetAnimation } from "./hooks/useWidgetAnimation";
-import { useWatchTrack } from "./hooks/useWatchTrack";
+import { useCurrentTrack } from "./hooks/useCurrentTrack";
 import { useVideoStream } from "./hooks/useVideoStream";
 import { createThumbnailTheme } from "./utils/thumbnailTheme";
 import { ThemeVars } from "./shared/types";
@@ -25,7 +25,7 @@ import { PIP_BG_MODE } from "./constants/settings";
 export default function App(): React.JSX.Element | null {
   useGlobalErrorLogging();
 
-  const track = useWatchTrack();
+  const track = useCurrentTrack();
   const lyricsState = useLyricsData(track);
   const currentTime = useVideoCurrentTime(track?.videoId);
   
@@ -148,6 +148,7 @@ export default function App(): React.JSX.Element | null {
           lyricsState={lyricsState}
           syncedLines={syncedLines}
           activeIndex={activeIndex}
+          playbackTime={currentTime + offset}
           settings={settings}
           onStartDrag={startDrag}
           onOpenPiP={openLyricsPiP}
@@ -172,6 +173,7 @@ export default function App(): React.JSX.Element | null {
         lyricsState={lyricsState}
         syncedLines={syncedLines}
         activeIndex={activeIndex}
+        playbackTime={currentTime + offset}
         settings={settings}
         themeVars={themeVars}
         thumbnail={track.thumbnail}
