@@ -5,7 +5,7 @@ export default defineManifest({
   name: "__MSG_extName__",
   description: "__MSG_extDesc__",
   default_locale: "en",
-  version: "1.1.3",
+  version: "1.1.5",
   icons: {
     "16": "icons/lyrike-icon@16px.png",
     "48": "icons/lyrike-icon@48px.png",
@@ -14,7 +14,7 @@ export default defineManifest({
   action: {
     default_icon: "icons/lyrike-icon@128px.png",
   },
-  permissions: ["storage"],
+  permissions: ["storage", "unlimitedStorage"],
   host_permissions: [
     "https://music.youtube.com/*",
     "https://www.youtube.com/*",
