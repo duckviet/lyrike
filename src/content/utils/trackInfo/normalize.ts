@@ -95,16 +95,31 @@ export function cleanTrackName(value: string): string {
   result = result.replace(/\s+(?:feat|ft)\.?\s.*/i, "");
   result = result.replace(COLLAB_TRAILING_RE, "");
 
+  // Remove trailing "prod./produced by ..."
+  result = result.replace(/\s+(?:prod|produced)\.?\s.*/i, "");
+
   // Strip free-standing video-type noise that appears outside any bracket.
-  // Loop to repeatedly strip trailing noise keywords and trailing separators.
+  // Loop to repeatedly strip trailing noise keywords, trailing hashtags and trailing separators.
   const trailingNoiseRegex =
-    /\s*[-|]*\s*\b(?:official|mv|lyrics?|video|audio|music\s+video|m\/v|visualizer|hd|4k)\b\s*$/gi;
+    /\s*[-|]*\s*\b(?:official|mv|lyrics?|video|audio|music\s+video|m\/v|visualizer|hd|4k|videoclip|video\s+clip|clip)\b\s*$/gi;
 
   let prevTrack: string;
   let currentTrack = result;
   do {
     prevTrack = currentTrack;
+
+    // Strip trailing hashtags if they are not the only content
+    const withoutTrailingHashtag = currentTrack.replace(/\s*#[\p{L}_][\p{L}\p{N}_]*\s*$/gu, "");
+    if (
+      withoutTrailingHashtag !== currentTrack &&
+      /(?:^|\s)[\p{L}\p{N}]+/u.test(withoutTrailingHashtag)
+    ) {
+      currentTrack = withoutTrailingHashtag.trim();
+    }
+
     currentTrack = currentTrack.replace(trailingNoiseRegex, "").trim();
+    // Clean up trailing separators left over
+    currentTrack = currentTrack.replace(/\s*[-|]+\s*$/g, "").trim();
   } while (currentTrack !== prevTrack);
 
   return currentTrack.replace(/\s+/g, " ").trim();

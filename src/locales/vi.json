@@ -12,7 +12,8 @@
     "pip": "Picture-in-Picture",
     "minimize": "Thu nhỏ",
     "expand": "Mở rộng",
-    "hide": "Ẩn"
+    "hide": "Ẩn",
+    "refresh": "Tải lại lời bài hát"
   },
   "settings": {
     "typography": {

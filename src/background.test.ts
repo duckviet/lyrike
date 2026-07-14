@@ -51,6 +51,7 @@ import {
   lyricsOffsetKey,
   SYNCED_LYRICS_BONUS,
   initializeLyricsOffset,
+  setBlacklistMock,
 } from "./background";
 import { LyricsData } from "./content/shared/types";
 
@@ -58,6 +59,7 @@ describe("background helper functions", () => {
   beforeEach(() => {
     mockStore = {};
     vi.restoreAllMocks();
+    setBlacklistMock({});
   });
 
   describe("normalizeText", () => {
@@ -322,6 +324,90 @@ describe("background helper functions", () => {
       expect(finalIndex.length).toBe(3000);
       expect(finalIndex.find((e: any) => e.id === 1)).toBeUndefined();
       expect(finalIndex.find((e: any) => e.id === 9999)).toBeDefined();
+    });
+  });
+
+  describe("Remote Blacklist and Overrides", () => {
+    const mockBlacklist = {
+      blacklistedLyricsIds: [2694067, 999],
+      videoOverrides: {
+        "vid_override_123": 888,
+      },
+    };
+
+    beforeEach(() => {
+      setBlacklistMock(mockBlacklist);
+      // Mock fetch to handle only LRCLIB URLs
+      vi.spyOn(global, "fetch").mockImplementation(async (url: any) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("api/get/888")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              id: 888,
+              trackName: "Overridden Track",
+              artistName: "Overridden Artist",
+              plainLyrics: "overridden lyrics",
+            }),
+          } as any;
+        }
+        if (urlStr.includes("api/search")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => [
+              {
+                id: 999, // blacklisted
+                trackName: "Bad Lyric Match",
+                artistName: "Artist",
+                plainLyrics: "bad text",
+              },
+              {
+                id: 777, // good
+                trackName: "Good Lyric Match",
+                artistName: "Artist",
+                plainLyrics: "good text",
+              },
+            ],
+          } as any;
+        }
+        return { status: 404, ok: false } as any;
+      });
+    });
+
+    test("resolveCachedEntry: should clear cache if ID is blacklisted", async () => {
+      mockStore["lyrics:artist:track"] = "999#0";
+      mockStore["lyrics_payload:999"] = { id: 999, plainLyrics: "bad" };
+
+      const result = await resolveCachedEntry("lyrics:artist:track", "999#0");
+      expect(result).toBeNull();
+      expect(mockStore["lyrics:artist:track"]).toBeUndefined();
+      expect(mockStore["lyrics_payload:999"]).toBeUndefined();
+    });
+
+    test("searchOnce: should filter out blacklisted lyric IDs", async () => {
+      const result = await searchOnce({
+        trackName: "Good Lyric Match",
+        artistName: "Artist",
+      });
+      // 999 is blacklisted, so it should skip 999 and select 777!
+      expect(result?.id).toBe(777);
+      expect(result?.trackName).toBe("Good Lyric Match");
+    });
+
+    test("findLyrics: should apply video overrides", async () => {
+      const payload = {
+        trackName: "Incorrect Name",
+        artistName: "Incorrect Artist",
+        channelName: "Incorrect Channel",
+        originalTitle: "Incorrect Title",
+        videoId: "vid_override_123",
+      };
+
+      const result = await findLyrics(payload);
+      expect(result?.id).toBe(888);
+      expect(result?.trackName).toBe("Overridden Track");
     });
   });
 });

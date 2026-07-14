@@ -18,10 +18,15 @@ function createEmptyLyricsState(): LyricsState {
  *
  * @param track Track information containing videoId and metadata.
  */
-export function useLyricsData(track: WatchInfo | null): LyricsState {
+export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch: () => void } {
   const [lyricsState, setLyricsState] = useState<LyricsState>(
     createEmptyLyricsState(),
   );
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  const refetch = () => {
+    setRefreshCount((c) => c + 1);
+  };
 
   // Keep a stable ref to the current videoId so the message listener can
   // check it without being stale due to closure capture.
@@ -33,6 +38,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
     setPrevVideoId(track?.videoId);
     currentVideoIdRef.current = track?.videoId;
     setLyricsState(createEmptyLyricsState());
+    setRefreshCount(0);
   }
 
   // ── Main fetch effect ──────────────────────────────────────────────────────
@@ -83,6 +89,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
             originalTitle: track.title,
             albumName: track.albumName,
             videoId: track.videoId,
+            forceRefresh: refreshCount > 0,
           },
         },
         (response) => {
@@ -129,6 +136,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     track?.videoId,
     track?.trackName,
@@ -136,6 +144,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
     track?.artistName,
     track?.channelName,
     track?.albumName,
+    refreshCount,
   ]);
 
   // ── Karaoke push-update listener ───────────────────────────────────────────
@@ -177,5 +186,5 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
     };
   }, [track?.videoId]);
 
-  return lyricsState;
+  return { ...lyricsState, refetch };
 }

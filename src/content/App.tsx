@@ -68,8 +68,8 @@ export default function App(): React.JSX.Element | null {
   const syncedLyricsText = lyricsState.data?.syncedLyrics || "";
 
   const syncedLines = useMemo(
-    () => parseSyncedLyrics(syncedLyricsText),
-    [syncedLyricsText],
+    () => parseSyncedLyrics(syncedLyricsText, settings?.prioritizeKaraoke ?? true),
+    [syncedLyricsText, settings?.prioritizeKaraoke],
   );
 
   const activeIndex = useMemo(
@@ -159,6 +159,7 @@ export default function App(): React.JSX.Element | null {
           onTabChange={setActiveTab}
           onSettingsChange={updateSettings}
           onResetSettings={resetAllSettings}
+          onRefetch={lyricsState.refetch}
           track={track}
           lyricsId={lyricsState.data?.id || undefined}
         />

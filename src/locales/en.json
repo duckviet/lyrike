@@ -12,7 +12,8 @@
     "pip": "Picture-in-Picture",
     "minimize": "Minimize",
     "expand": "Expand",
-    "hide": "Hide"
+    "hide": "Hide",
+    "refresh": "Reload lyrics"
   },
   "settings": {
     "typography": {

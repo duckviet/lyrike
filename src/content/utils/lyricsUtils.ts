@@ -55,7 +55,10 @@ export function measureLineHeight(
  * Parses LRC format lyrics into timed lines.
  * @param lrcText Raw LRC formatted text.
  */
-export function parseSyncedLyrics(lrcText: string = ""): LyricLine[] {
+export function parseSyncedLyrics(
+  lrcText: string = "",
+  prioritizeKaraoke: boolean = true,
+): LyricLine[] {
   return lrcText
     .split("\n")
     .flatMap((rawLine) => {
@@ -74,9 +77,10 @@ export function parseSyncedLyrics(lrcText: string = ""): LyricLine[] {
             : Number(fractionRaw) / 100;
         const time = minute * 60 + second + fraction;
 
-        const isKaraoke = /<\d{1,2}:\d{2}(?:\.\d{2,3})?>/.test(rawText);
+        const hasKaraokeTags = /<\d{1,2}:\d{2}(?:\.\d{2,3})?>/.test(rawText);
+        const isKaraoke = hasKaraokeTags && prioritizeKaraoke;
         let words: LyricWord[] = [];
-        const text = isKaraoke ? rawText.replace(/<[^>]+>/g, "") : rawText;
+        const text = hasKaraokeTags ? rawText.replace(/<[^>]+>/g, "") : rawText;
 
         if (isKaraoke) {
           const wordMatches = [...rawText.matchAll(/<(\d{1,2}):(\d{2})(?:\.(\d{2,3}))?>([^<]*)/g)];

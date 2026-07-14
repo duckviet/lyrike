@@ -5,6 +5,64 @@ export const SYNCED_LYRICS_BONUS = 100;
 export const EXACT_MATCH_BONUS = 10;
 export const PARTIAL_MATCH_BONUS = 4;
 
+export interface RemoteBlacklistConfig {
+  blacklistedLyricsIds?: number[];
+  videoOverrides?: Record<string, number>;
+}
+
+const BLACKLIST_URL = "https://raw.githubusercontent.com/duckviet/lyrike/main/blacklist.json";
+const BLACKLIST_CACHE_KEY = "lyrics_blacklist_config";
+const BLACKLIST_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+export interface CachedBlacklist {
+  config: RemoteBlacklistConfig;
+  fetchedAt: number;
+}
+
+let blacklistMock: RemoteBlacklistConfig | null = null;
+
+export function setBlacklistMock(mock: RemoteBlacklistConfig | null) {
+  blacklistMock = mock;
+}
+
+export async function getOrFetchBlacklist(): Promise<RemoteBlacklistConfig> {
+  if (blacklistMock) return blacklistMock;
+  try {
+    const cached = await chrome.storage.local.get(BLACKLIST_CACHE_KEY);
+    const entry = cached[BLACKLIST_CACHE_KEY] as CachedBlacklist | undefined;
+
+    if (entry && Date.now() - entry.fetchedAt < BLACKLIST_TTL_MS) {
+      return entry.config;
+    }
+
+    // Fetch fresh blacklist
+    const response = await fetch(BLACKLIST_URL);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch blacklist: ${response.status}`);
+    }
+    const config: RemoteBlacklistConfig = await response.json();
+
+    // Save to storage
+    await chrome.storage.local.set({
+      [BLACKLIST_CACHE_KEY]: {
+        config,
+        fetchedAt: Date.now(),
+      },
+    });
+
+    return config;
+  } catch (e) {
+    console.warn(
+      "[Lyrics] Failed to fetch or load blacklist, falling back to empty/cached:",
+      e,
+    );
+    // Fallback: if we have cached, return it even if expired, otherwise return empty
+    const cached = await chrome.storage.local.get(BLACKLIST_CACHE_KEY);
+    const entry = cached[BLACKLIST_CACHE_KEY] as CachedBlacklist | undefined;
+    return entry?.config ?? {};
+  }
+}
+
 /**
  * Storage key for a lyrics time-offset adjustment.
  * Prefer the video-specific key when videoId is known — same LRCLIB track
@@ -320,6 +378,15 @@ export async function resolveCachedEntry(
 
     if (!Number.isFinite(id)) return null;
 
+    // Check remote blacklist
+    const blacklist = await getOrFetchBlacklist();
+    if (blacklist.blacklistedLyricsIds?.includes(id)) {
+      console.log(`[Lyrics] Cache hit for blacklisted ID ${id}, clearing cache.`);
+      await chrome.storage.local.remove(cacheKey);
+      await chrome.storage.local.remove(`${LYRICS_PAYLOAD_PREFIX}${id}`);
+      return null;
+    }
+
     // Prefer stored offset (video-specific → global fallback)
     if (!offsetMs) {
       offsetMs = await getLyricsOffset(id, videoId);
@@ -334,6 +401,15 @@ export async function resolveCachedEntry(
     const legacyId = legacy.id;
 
     if (typeof legacyId === "number" && Number.isFinite(legacyId)) {
+      // Check remote blacklist for legacy cache
+      const blacklist = await getOrFetchBlacklist();
+      if (blacklist.blacklistedLyricsIds?.includes(legacyId)) {
+        console.log(`[Lyrics] Legacy cache hit for blacklisted ID ${legacyId}, clearing cache.`);
+        await chrome.storage.local.remove(cacheKey);
+        await chrome.storage.local.remove(`${LYRICS_PAYLOAD_PREFIX}${legacyId}`);
+        return null;
+      }
+
       const legacyOffset =
         typeof legacy.offsetMs === "number" && Number.isFinite(legacy.offsetMs)
           ? legacy.offsetMs
@@ -443,8 +519,13 @@ export async function searchOnce(
 
   const results: LyricsData[] = await response.json();
 
+  // Filter out blacklisted IDs from remote config
+  const blacklist = await getOrFetchBlacklist();
+  const blacklistedIds = blacklist.blacklistedLyricsIds ?? [];
+  const filteredResults = results.filter((r) => typeof r.id === "number" && !blacklistedIds.includes(r.id));
+
   const best =
-    results
+    filteredResults
       .slice()
       .sort(
         (a, b) =>
@@ -638,6 +719,27 @@ export async function findLyrics(
 ): Promise<LyricsData | null> {
   const { videoId } = payload;
 
+  // Check for video overrides in remote config
+  if (videoId) {
+    try {
+      const blacklist = await getOrFetchBlacklist();
+      const overrides = blacklist.videoOverrides ?? {};
+      if (videoId in overrides) {
+        const overrideId = overrides[videoId];
+        console.log(`[Lyrics] Applying video override for videoId ${videoId} -> ID ${overrideId}`);
+        if (overrideId) {
+          const lyrics = await fetchLyricsByIdWithCache(overrideId);
+          if (lyrics) {
+            const offsetMs = await getLyricsOffset(overrideId, videoId);
+            return { ...lyrics, offsetMs };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[Lyrics] Failed to apply video override:", e);
+    }
+  }
+
   let prioritizeKaraoke = false;
   try {
     const settingsResult = await chrome.storage.local.get(
@@ -777,16 +879,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "FETCH_LYRICS") {
     const tabId = sender.tab?.id;
     const videoId = message.payload?.videoId as string | undefined;
+    const forceRefresh = message.payload?.forceRefresh as boolean | undefined;
 
-    findLyrics(message.payload, {
-      onKaraokeFound: async (lyrics) => {
-        // Push karaoke update to the originating tab via a separate message.
-        // sendResponse() has already been called at this point, so we cannot
-        // reuse it — chrome.tabs.sendMessage is the only channel available.
-        if (typeof tabId !== "number" || !videoId) return;
-        await notifyKaraokeUpdate(tabId, videoId, lyrics);
-      },
-    })
+    const performFetch = async () => {
+      if (forceRefresh) {
+        const normalCandidates = createNormalCandidates(message.payload);
+        for (const candidate of normalCandidates) {
+          const cacheKey = lyricsCacheKey(candidate);
+          const cached = await chrome.storage.local.get(cacheKey);
+          const cachedVal = cached[cacheKey];
+          if (cachedVal !== undefined) {
+            let id: number | null = null;
+            if (typeof cachedVal === "number") {
+              id = cachedVal;
+            } else if (typeof cachedVal === "string") {
+              id = parseInt(cachedVal.split("#")[0], 10);
+            }
+            if (id && Number.isFinite(id)) {
+              await chrome.storage.local.remove(`${LYRICS_PAYLOAD_PREFIX}${id}`);
+            }
+          }
+          await chrome.storage.local.remove(cacheKey);
+        }
+      }
+
+      return findLyrics(message.payload, {
+        onKaraokeFound: async (lyrics) => {
+          if (typeof tabId !== "number" || !videoId) return;
+          await notifyKaraokeUpdate(tabId, videoId, lyrics);
+        },
+      });
+    };
+
+    performFetch()
       .then((data) => sendResponse({ ok: true, data }))
       .catch((error) =>
         sendResponse({

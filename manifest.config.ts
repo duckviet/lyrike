@@ -5,7 +5,7 @@ export default defineManifest({
   name: "__MSG_extName__",
   description: "__MSG_extDesc__",
   default_locale: "en",
-  version: "1.1.5",
+  version: "1.2.1",
   icons: {
     "16": "icons/lyrike-icon@16px.png",
     "48": "icons/lyrike-icon@48px.png",
@@ -23,6 +23,7 @@ export default defineManifest({
     "https://fonts.googleapis.com/*",
     "https://fonts.gstatic.com/*",
     "https://lyrike-report-proxy.duckviet.workers.dev/*", // Thêm dòng này
+    "https://raw.githubusercontent.com/*",
   ],
   background: {
     service_worker: "src/background.ts",

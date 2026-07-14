@@ -239,4 +239,22 @@ Album: Gặp Lại
     expect(result.artistName).toBe("Kendrick Lamar");
     expect(result.trackName).toBe("Money Trees");
   });
+
+  test("Should strip trailing hashtags and bracketed guitar credits", () => {
+    const title = "KAZE - TENSIÓN [GUITARRA POR JOSE GOMEZ] #NOENCAJES";
+    const channelName = "KAZE";
+
+    const result = inferSongInfo(title, channelName);
+    expect(result.artistName).toBe("KAZE");
+    expect(result.trackName).toBe("TENSIÓN");
+  });
+
+  test("Should strip videoclip noise and bracketed production credits", () => {
+    const title = "KAZE - EXISTIAN SONRISAS - VIDEOCLIP (PROD. 5MENTARIOS)";
+    const channelName = "KAZE";
+
+    const result = inferSongInfo(title, channelName);
+    expect(result.artistName).toBe("KAZE");
+    expect(result.trackName).toBe("EXISTIAN SONRISAS");
+  });
 });

@@ -34,6 +34,7 @@ interface FloatingLyricsWidgetProps {
   onTabChange: (tab: string) => void;
   onSettingsChange: (settings: Settings) => void;
   onResetSettings: () => void;
+  onRefetch?: () => void;
   themeVars?: ThemeVars;
   track?: WatchInfo | null;
   lyricsId?: number;
@@ -61,6 +62,7 @@ export function FloatingLyricsWidget({
   onTabChange,
   onSettingsChange,
   onResetSettings,
+  onRefetch,
   themeVars,
   track,
   lyricsId,
@@ -124,6 +126,7 @@ export function FloatingLyricsWidget({
         onOpenPiP={onOpenPiP}
         onToggleMinimized={onToggleMinimized}
         onHide={onHide}
+        onRefetch={onRefetch}
       />
 
       <TabSwitcher activeTab={activeTab} onChange={onTabChange} />
