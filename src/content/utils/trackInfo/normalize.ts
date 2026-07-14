@@ -28,9 +28,15 @@ export const NOISE_RE_BRACKET_RD = new RegExp(
   "gi",
 );
 export const NOISE_RE_TRAILING_PIPE = new RegExp(
-  `\\s*[|｜]\\s*(?:${NOISE_PATTERN})(?:\\s+(?:${NOISE_PATTERN}))*(?:\\s+\\d{4})?\\s*$`,
+  `\\s*[|\uFF5C]\\s*(?:${NOISE_PATTERN})(?:\\s+(?:${NOISE_PATTERN}))*(?:\\s+\\d{4})?\\s*$`,
   "gi",
 );
+
+// Strips parenthesized language / locale suffixes that carry no lyrics info,
+// e.g. (ENG/CHN), (KR/EN), (ENG SUB), (English Ver.), (Chinese Ver.)
+// Must come AFTER bracket-noise removal so genuinely useful brackets are kept.
+export const LANGUAGE_SUFFIX_RE =
+  /\s*\([^)]{0,20}(?:\/[A-Z]{2,5}|\bENG\b|\bCHN\b|\bKOR\b|\bJPN\b|\bVIE\b|\b[A-Z]{2,5}\s+(?:SUB|VER|VERSION))\s*[^)]{0,20}\)/gi;
 
 const TRAILING_PIPE_CONTEXT_RE = new RegExp(
   `\\s*[|｜]\\s*[^|｜]*\\b(?:${CONTEXT_PATTERN})\\b[^|｜]*$`,
@@ -61,6 +67,9 @@ export function removeBracketedNoise(value: string): string {
   // Remove trailing pipe-context (e.g. "| Gặp Lại Album", "| XYZ OST")
   result = result.replace(TRAILING_PIPE_CONTEXT_RE, "");
 
+  // Strip parenthesized language suffixes: (ENG/CHN), (KR/EN), (ENG SUB) …
+  result = result.replace(LANGUAGE_SUFFIX_RE, "");
+
   return result.replace(/\s+/g, " ").trim();
 }
 
@@ -86,7 +95,34 @@ export function cleanTrackName(value: string): string {
   result = result.replace(/\s+(?:feat|ft)\.?\s.*/i, "");
   result = result.replace(COLLAB_TRAILING_RE, "");
 
-  return result.replace(/\s+/g, " ").trim();
+  // Remove trailing "prod./produced by ..."
+  result = result.replace(/\s+(?:prod|produced)\.?\s.*/i, "");
+
+  // Strip free-standing video-type noise that appears outside any bracket.
+  // Loop to repeatedly strip trailing noise keywords, trailing hashtags and trailing separators.
+  const trailingNoiseRegex =
+    /\s*[-|]*\s*\b(?:official|mv|lyrics?|video|audio|music\s+video|m\/v|visualizer|hd|4k|videoclip|video\s+clip|clip)\b\s*$/gi;
+
+  let prevTrack: string;
+  let currentTrack = result;
+  do {
+    prevTrack = currentTrack;
+
+    // Strip trailing hashtags if they are not the only content
+    const withoutTrailingHashtag = currentTrack.replace(/\s*#[\p{L}_][\p{L}\p{N}_]*\s*$/gu, "");
+    if (
+      withoutTrailingHashtag !== currentTrack &&
+      /(?:^|\s)[\p{L}\p{N}]+/u.test(withoutTrailingHashtag)
+    ) {
+      currentTrack = withoutTrailingHashtag.trim();
+    }
+
+    currentTrack = currentTrack.replace(trailingNoiseRegex, "").trim();
+    // Clean up trailing separators left over
+    currentTrack = currentTrack.replace(/\s*[-|]+\s*$/g, "").trim();
+  } while (currentTrack !== prevTrack);
+
+  return currentTrack.replace(/\s+/g, " ").trim();
 }
 
 export function normalizeForCmp(name: string): string {

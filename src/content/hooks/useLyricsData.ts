@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { LyricsState, WatchInfo } from "../shared/types";
+import { useEffect, useRef, useState } from "react";
+import { LyricsData, LyricsState, WatchInfo } from "../shared/types";
 
 function createEmptyLyricsState(): LyricsState {
   return {
@@ -11,26 +11,43 @@ function createEmptyLyricsState(): LyricsState {
 
 /**
  * Fetches lyrics data for the given track via Chrome runtime messaging.
+ *
+ * When prioritizeKaraoke is enabled, the background may find a karaoke version
+ * asynchronously after the initial response. It pushes a KARAOKE_LYRICS_UPDATED
+ * message to this tab; the hook picks it up and swaps the lyrics in the UI.
+ *
  * @param track Track information containing videoId and metadata.
  */
-export function useLyricsData(track: WatchInfo | null): LyricsState {
+export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch: () => void } {
   const [lyricsState, setLyricsState] = useState<LyricsState>(
     createEmptyLyricsState(),
   );
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  const refetch = () => {
+    setRefreshCount((c) => c + 1);
+  };
+
+  // Keep a stable ref to the current videoId so the message listener can
+  // check it without being stale due to closure capture.
+  const currentVideoIdRef = useRef<string | undefined>(track?.videoId);
 
   // Reset state when track changes
   const [prevVideoId, setPrevVideoId] = useState(track?.videoId);
   if (track?.videoId !== prevVideoId) {
     setPrevVideoId(track?.videoId);
+    currentVideoIdRef.current = track?.videoId;
     setLyricsState(createEmptyLyricsState());
+    setRefreshCount(0);
   }
 
+  // ── Main fetch effect ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!track?.videoId) {
       return;
     }
 
-    console.log(track)
+    console.log(track);
     const queryTrackName = (track.trackName || track.title || "").trim();
     if (!queryTrackName) {
       return;
@@ -71,6 +88,8 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
             channelName: track.channelName,
             originalTitle: track.title,
             albumName: track.albumName,
+            videoId: track.videoId,
+            forceRefresh: refreshCount > 0,
           },
         },
         (response) => {
@@ -117,6 +136,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     track?.videoId,
     track?.trackName,
@@ -124,7 +144,47 @@ export function useLyricsData(track: WatchInfo | null): LyricsState {
     track?.artistName,
     track?.channelName,
     track?.albumName,
+    refreshCount,
   ]);
 
-  return lyricsState;
+  // ── Karaoke push-update listener ───────────────────────────────────────────
+  //
+  // When prioritizeKaraoke is on, the background sends KARAOKE_LYRICS_UPDATED
+  // after the initial sendResponse() has already returned. This effect
+  // listens for that message and swaps in the karaoke lyrics if the videoId
+  // still matches the currently playing track.
+  useEffect(() => {
+    if (
+      typeof chrome === "undefined" ||
+      !chrome.runtime?.onMessage
+    ) {
+      return;
+    }
+
+    const handleMessage = (message: {
+      type?: string;
+      payload?: { videoId?: string; lyrics?: LyricsData };
+    }) => {
+      if (message.type !== "KARAOKE_LYRICS_UPDATED") return;
+
+      const { videoId: updatedVideoId, lyrics: updatedLyrics } =
+        message.payload ?? {};
+
+      // Guard: ignore if the user has already navigated to a different video
+      if (!updatedLyrics || updatedVideoId !== currentVideoIdRef.current) return;
+
+      console.log(
+        "[Lyrics] Received karaoke push-update for videoId:",
+        updatedVideoId,
+      );
+      setLyricsState({ loading: false, data: updatedLyrics, error: "" });
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage);
+    };
+  }, [track?.videoId]);
+
+  return { ...lyricsState, refetch };
 }

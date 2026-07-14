@@ -12,7 +12,8 @@
     "pip": "Picture-in-Picture",
     "minimize": "Thu nhỏ",
     "expand": "Mở rộng",
-    "hide": "Ẩn"
+    "hide": "Ẩn",
+    "refresh": "Tải lại lời bài hát"
   },
   "settings": {
     "typography": {
@@ -146,6 +147,19 @@
       "source_desc_2": "(cảm ơn dự án nguồn mở tuyệt vời từ",
       "source_desc_3": ").",
       "support_desc": "Lyrike hiện đã hoạt động trên cả YouTube và YouTube Music:"
+    },
+    "report": {
+      "title": "Báo cáo lỗi",
+      "desc": "Gặp lỗi hoặc có góp ý? Cho chúng tôi biết để cải thiện Lyrike.",
+      "placeholder": "Mô tả lỗi bạn gặp phải (VD: lyrics bị lệch, extension bị treo, giao diện lỗi...)",
+      "submit": "Gửi báo cáo",
+      "submitting": "Đang gửi...",
+      "report_desc": "Báo thiếu lyric để chúng tôi bổ sung sớm nhất",
+      "success": "Gửi báo cáo thành công! Cảm ơn bạn.",
+      "error": "Gửi báo cáo thất bại: {{error}}",
+      "track_info": "Thông tin bài hát đính kèm",
+      "attach_track": "Đính kèm thông tin bài hát hiện tại",
+      "include_diagnostics": "Đính kèm chẩn đoán hệ thống (Phiên bản, Settings, v.v.)"
     }
   }
 }

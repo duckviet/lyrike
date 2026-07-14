@@ -9,6 +9,7 @@ import {
   LyricLine,
   Settings,
   ThemeVars,
+  WatchInfo,
 } from "../shared/types";
 
 interface FloatingLyricsWidgetProps {
@@ -33,7 +34,10 @@ interface FloatingLyricsWidgetProps {
   onTabChange: (tab: string) => void;
   onSettingsChange: (settings: Settings) => void;
   onResetSettings: () => void;
+  onRefetch?: () => void;
   themeVars?: ThemeVars;
+  track?: WatchInfo | null;
+  lyricsId?: number;
 }
 
 export function FloatingLyricsWidget({
@@ -58,7 +62,10 @@ export function FloatingLyricsWidget({
   onTabChange,
   onSettingsChange,
   onResetSettings,
+  onRefetch,
   themeVars,
+  track,
+  lyricsId,
 }: FloatingLyricsWidgetProps): React.JSX.Element {
   const contentBodyRef = useRef<HTMLDivElement | null>(null);
   const [contentWidthPx, setContentWidthPx] = useState<number>(
@@ -119,6 +126,7 @@ export function FloatingLyricsWidget({
         onOpenPiP={onOpenPiP}
         onToggleMinimized={onToggleMinimized}
         onHide={onHide}
+        onRefetch={onRefetch}
       />
 
       <TabSwitcher activeTab={activeTab} onChange={onTabChange} />
@@ -146,6 +154,8 @@ export function FloatingLyricsWidget({
               settings={settings}
               onChange={onSettingsChange}
               onReset={onResetSettings}
+              track={track}
+              lyricsId={lyricsId}
             />
           )}
         </div>

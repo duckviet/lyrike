@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { CloseIcon, PiPIcon } from "../icons";
+import { CloseIcon, PiPIcon, RefreshIcon } from "../icons";
 
 function ExpandIcon(): React.JSX.Element {
   return (
@@ -45,6 +45,7 @@ interface WidgetHeaderProps {
   onOpenPiP: () => void;
   onToggleMinimized: () => void;
   onHide: () => void;
+  onRefetch?: () => void;
 }
 
 export function WidgetHeader({
@@ -55,6 +56,7 @@ export function WidgetHeader({
   onOpenPiP,
   onToggleMinimized,
   onHide,
+  // onRefetch,
 }: WidgetHeaderProps): React.JSX.Element {
   const { t } = useTranslation();
 
@@ -73,6 +75,18 @@ export function WidgetHeader({
       </div>
 
       <div className="flex items-center gap-xs flex-shrink-0">
+        {/* {onRefetch && (
+          <button
+            type="button"
+            className="flex items-center justify-center w-10 h-10 border-none rounded-md bg-transparent text-text-secondary cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2]"
+            onClick={onRefetch}
+            title={t("header.refresh")}
+            aria-label={t("header.refresh")}
+          >
+            <RefreshIcon />
+          </button>
+        )} */}
+
         <button
           type="button"
           className="flex items-center justify-center w-10 h-10 border-none rounded-md bg-transparent text-text-secondary cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2]"

@@ -12,7 +12,8 @@
     "pip": "Picture-in-Picture",
     "minimize": "Minimize",
     "expand": "Expand",
-    "hide": "Hide"
+    "hide": "Hide",
+    "refresh": "Reload lyrics"
   },
   "settings": {
     "typography": {
@@ -146,6 +147,19 @@
       "source_desc_2": "(thanks to the great open-source project from",
       "source_desc_3": ").",
       "support_desc": "Lyrike now works on YouTube and YouTube Music:"
+    },
+    "report": {
+      "title": "Report Issue",
+      "desc": "Found a bug or have feedback? Let us know to help improve Lyrike.",
+      "placeholder": "Describe the issue (e.g., lyrics out of sync, extension crashed, UI glitch...)",
+      "submit": "Submit Report",
+      "submitting": "Submitting...",
+      "report_desc": "Report missing lyrics — we'll add them as soon as possible",
+      "success": "Report submitted successfully! Thank you.",
+      "error": "Failed to submit report: {{error}}",
+      "track_info": "Attached track info",
+      "attach_track": "Attach current track info",
+      "include_diagnostics": "Attach system diagnostics (Version, Settings, etc.)"
     }
   }
 }

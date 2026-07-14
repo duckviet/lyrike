@@ -50,6 +50,8 @@ import {
   findLyrics,
   lyricsOffsetKey,
   SYNCED_LYRICS_BONUS,
+  initializeLyricsOffset,
+  setBlacklistMock,
 } from "./background";
 import { LyricsData } from "./content/shared/types";
 
@@ -57,6 +59,7 @@ describe("background helper functions", () => {
   beforeEach(() => {
     mockStore = {};
     vi.restoreAllMocks();
+    setBlacklistMock({});
   });
 
   describe("normalizeText", () => {
@@ -129,6 +132,42 @@ describe("background helper functions", () => {
       // Should have saved the migration in chrome.storage
       expect(mockStore["lyrics:binz:em"]).toBe("9876#0");
       expect(mockStore[lyricsOffsetKey(9876)]).toBe(0);
+      expect(mockStore["lyrics_payload:9876"]).toBeDefined();
+    });
+
+    test("should migrate legacy object cache preserving non-zero offsetMs", async () => {
+      const legacyObject = { id: 9876, offsetMs: 850, trackName: "Em", plainLyrics: "..." };
+      const result = await resolveCachedEntry("lyrics:binz:em", legacyObject);
+
+      expect(result).toEqual({ id: 9876, offsetMs: 850 });
+      expect(mockStore["lyrics:binz:em"]).toBe("9876#850");
+      expect(mockStore[lyricsOffsetKey(9876)]).toBe(850);
+      expect(mockStore["lyrics_payload:9876"]).toBeDefined();
+    });
+
+    test("should resolve video-specific offset when videoId is provided", async () => {
+      // Mock video-specific offset
+      mockStore["lyrics_offset:vid123:9876"] = 1250;
+      mockStore["lyrics_offset:9876"] = 400; // global fallback
+
+      const resultWithVideo = await resolveCachedEntry("lyrics:binz:em", 9876, "vid123");
+      expect(resultWithVideo).toEqual({ id: 9876, offsetMs: 1250 });
+
+      const resultWithoutVideo = await resolveCachedEntry("lyrics:binz:em", 9876);
+      expect(resultWithoutVideo).toEqual({ id: 9876, offsetMs: 400 });
+    });
+  });
+
+  describe("initializeLyricsOffset", () => {
+    test("should set offset to 0 if not present", async () => {
+      await initializeLyricsOffset(999);
+      expect(mockStore[lyricsOffsetKey(999)]).toBe(0);
+    });
+
+    test("should preserve existing offset if already present", async () => {
+      mockStore[lyricsOffsetKey(999)] = 350;
+      await initializeLyricsOffset(999);
+      expect(mockStore[lyricsOffsetKey(999)]).toBe(350);
     });
   });
 
@@ -239,6 +278,136 @@ describe("background helper functions", () => {
       expect(result).toEqual(dummyAPIResult);
       // Should have run search twice (candidate 1: with album, candidate 2: without album)
       expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test("LRU cache: should save payload to storage and prune oldest when exceeding limit", async () => {
+      // 1. Pre-fill mockStore with cache index and payload entries
+      const mockIndex: any[] = [];
+      for (let i = 1; i <= 3000; i++) {
+        mockIndex.push({
+          id: i,
+          sizeBytes: 100,
+          lastAccessedAt: 1000 + i, // entry 1 is oldest (1001)
+        });
+        mockStore[`lyrics_payload:${i}`] = { id: i, plainLyrics: "test" };
+      }
+      mockStore["lyrics_cache_index"] = mockIndex;
+
+      // 2. Perform a searchOnce search that causes a cache miss and new save (id = 9999)
+      const freshResult = {
+        id: 9999,
+        trackName: "Fresh Track",
+        artistName: "Fresh Artist",
+        plainLyrics: "lyrics...",
+      };
+
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => [freshResult],
+      } as any);
+
+      await searchOnce({
+        trackName: "Fresh Track",
+        artistName: "Fresh Artist",
+      });
+
+      // Wait a short duration for the background/fire-and-forget setCachedPayload to complete
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // 3. Verify that 9999 is cached
+      expect(mockStore["lyrics_payload:9999"]).toBeDefined();
+
+      // 4. Verify that the oldest item (id = 1) was evicted
+      expect(mockStore["lyrics_payload:1"]).toBeUndefined();
+      const finalIndex = mockStore["lyrics_cache_index"];
+      expect(finalIndex.length).toBe(3000);
+      expect(finalIndex.find((e: any) => e.id === 1)).toBeUndefined();
+      expect(finalIndex.find((e: any) => e.id === 9999)).toBeDefined();
+    });
+  });
+
+  describe("Remote Blacklist and Overrides", () => {
+    const mockBlacklist = {
+      blacklistedLyricsIds: [2694067, 999],
+      videoOverrides: {
+        "vid_override_123": 888,
+      },
+    };
+
+    beforeEach(() => {
+      setBlacklistMock(mockBlacklist);
+      // Mock fetch to handle only LRCLIB URLs
+      vi.spyOn(global, "fetch").mockImplementation(async (url: any) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("api/get/888")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              id: 888,
+              trackName: "Overridden Track",
+              artistName: "Overridden Artist",
+              plainLyrics: "overridden lyrics",
+            }),
+          } as any;
+        }
+        if (urlStr.includes("api/search")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => [
+              {
+                id: 999, // blacklisted
+                trackName: "Bad Lyric Match",
+                artistName: "Artist",
+                plainLyrics: "bad text",
+              },
+              {
+                id: 777, // good
+                trackName: "Good Lyric Match",
+                artistName: "Artist",
+                plainLyrics: "good text",
+              },
+            ],
+          } as any;
+        }
+        return { status: 404, ok: false } as any;
+      });
+    });
+
+    test("resolveCachedEntry: should clear cache if ID is blacklisted", async () => {
+      mockStore["lyrics:artist:track"] = "999#0";
+      mockStore["lyrics_payload:999"] = { id: 999, plainLyrics: "bad" };
+
+      const result = await resolveCachedEntry("lyrics:artist:track", "999#0");
+      expect(result).toBeNull();
+      expect(mockStore["lyrics:artist:track"]).toBeUndefined();
+      expect(mockStore["lyrics_payload:999"]).toBeUndefined();
+    });
+
+    test("searchOnce: should filter out blacklisted lyric IDs", async () => {
+      const result = await searchOnce({
+        trackName: "Good Lyric Match",
+        artistName: "Artist",
+      });
+      // 999 is blacklisted, so it should skip 999 and select 777!
+      expect(result?.id).toBe(777);
+      expect(result?.trackName).toBe("Good Lyric Match");
+    });
+
+    test("findLyrics: should apply video overrides", async () => {
+      const payload = {
+        trackName: "Incorrect Name",
+        artistName: "Incorrect Artist",
+        channelName: "Incorrect Channel",
+        originalTitle: "Incorrect Title",
+        videoId: "vid_override_123",
+      };
+
+      const result = await findLyrics(payload);
+      expect(result?.id).toBe(888);
+      expect(result?.trackName).toBe("Overridden Track");
     });
   });
 });

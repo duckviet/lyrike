@@ -25,6 +25,11 @@ export const TITLE_NOISE_WORDS = [
   "video\\s+version",
   "short\\s+version",
   "full\\s+version",
+  "videoclip",
+  "video\\s+clip",
+  "clip",
+  "prod(?:uced)?(?:\\s+(?:by|por|de))?",
+  "guitar(?:ra)?(?:\\s+(?:por|by|de))?",
 ];
 
 // Substrings to filter out general noise in album detection
