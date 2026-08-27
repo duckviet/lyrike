@@ -1,6 +1,9 @@
 {
-  "blacklistedLyricsIds": [
-    2694067
-  ],
-  "videoOverrides": {}
+  "blacklistedLyricsIds": [2694067, 10452858],
+  "videoOverrides": {
+    "KzKLd9p4x3w": 969214,
+    "9PBZy9j3H3I": 28282363,
+    "Mx_OexsUI2M": 19230547,
+    "hKgl5-lkT8U": 36890753
+  }
 }
