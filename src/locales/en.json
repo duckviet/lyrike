@@ -128,8 +128,8 @@
         "hint": "Show live video as PiP background (may consume more resources)."
       },
       "offset": {
-        "earlier": "{{value}}s earlier",
-        "later": "{{value}}s later"
+        "earlier": "adjust lyrics {{value}}s earlier",
+        "later": "adjust lyrics {{value}}s later"
       }
     },
     "language": {

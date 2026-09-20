@@ -12,7 +12,7 @@ export interface RemoteBlacklistConfig {
 
 const BLACKLIST_URL = "https://raw.githubusercontent.com/duckviet/lyrike/main/blacklist.json";
 const BLACKLIST_CACHE_KEY = "lyrics_blacklist_config";
-const BLACKLIST_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+const BLACKLIST_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 export interface CachedBlacklist {
   config: RemoteBlacklistConfig;
@@ -640,14 +640,14 @@ async function searchAndCacheKaraoke(
   const candidates: SearchCandidate[] = alreadyKaraoke
     ? [{ trackName, artistName, albumName }]
     : [
-        { trackName: `${trackName} Karaoke`, artistName, albumName },
-        { trackName: `${trackName} - Karaoke`, artistName, albumName: "" },
-        {
-          trackName: `${trackName} (Karaoke Version)`,
-          artistName,
-          albumName: "",
-        },
-      ];
+      { trackName: `${trackName} Karaoke`, artistName, albumName },
+      { trackName: `${trackName} - Karaoke`, artistName, albumName: "" },
+      {
+        trackName: `${trackName} (Karaoke Version)`,
+        artistName,
+        albumName: "",
+      },
+    ];
 
   for (const candidate of candidates) {
     // Always score with prioritizeKaraoke=true so karaoke results rank highest.

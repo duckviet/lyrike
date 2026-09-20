@@ -128,8 +128,8 @@
         "hint": "Hiển thị video đang phát làm nền trong PiP (có thể tốn tài nguyên)."
       },
       "offset": {
-        "earlier": "Sớm hơn {{value}}s",
-        "later": "Trễ hơn {{value}}s"
+        "earlier": "Chỉnh lyric sớm hơn {{value}}s",
+        "later": "Chỉnh lyric trễ hơn {{value}}s"
       }
     },
     "language": {

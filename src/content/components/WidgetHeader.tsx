@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { CloseIcon, PiPIcon, RefreshIcon } from "../icons";
+import { CloseIcon, PiPIcon } from "../icons";
 
 function ExpandIcon(): React.JSX.Element {
   return (

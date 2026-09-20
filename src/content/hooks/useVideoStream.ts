@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { usePlatform } from "../PlatformContext";
 
+function isStreamHealthy(stream: MediaStream | null): boolean {
+  if (!stream || !stream.active) {
+    return false;
+  }
+
+  const videoTracks = stream.getVideoTracks();
+  return videoTracks.length > 0 && videoTracks.some((t) => t.readyState === "live");
+}
+
 /**
- * Captures the stream from the main YouTube video element.
- * Avoids capturing YouTube ads. When an ad is showing, the stream is cleared
- * so the PiP background will not keep the last ad frame.
+ * Captures the stream from the main video element for PiP background.
+ * Avoids capturing YouTube ads. When an ad is showing, the stream is cleared.
+ * Automatically recaptures when tracks change, sources reset, or stream ends.
  */
 export function useVideoStream(
   enabled: boolean,
@@ -30,54 +39,124 @@ export function useVideoStream(
       });
     };
 
-    if (!enabled || !videoId) {
+    if (!enabled) {
       stopCurrentStream();
       return;
     }
 
     let cancelled = false;
     let lastCapturedVideo: HTMLVideoElement | null = null;
+    let lastCapturedSrc: string = "";
     let recaptureTimer: number | null = null;
+    let boundVideo: HTMLVideoElement | null = null;
+
+    const detachVideoListeners = (video: HTMLVideoElement | null) => {
+      if (!video) return;
+      video.removeEventListener("emptied", onVideoReset);
+      video.removeEventListener("loadstart", onVideoReset);
+      video.removeEventListener("loadeddata", onVideoReady);
+      video.removeEventListener("canplay", onVideoReady);
+      video.removeEventListener("playing", onVideoReady);
+    };
+
+    const scheduleRecapture = (delay = 200) => {
+      if (cancelled || !enabled) return;
+
+      if (recaptureTimer !== null) {
+        window.clearTimeout(recaptureTimer);
+      }
+
+      recaptureTimer = window.setTimeout(() => {
+        recaptureTimer = null;
+        captureCurrentVideo();
+      }, delay);
+    };
+
+    const onVideoReset = () => {
+      // Media element is resetting/loading for a new track
+      scheduleRecapture(250);
+    };
+
+    const onVideoReady = () => {
+      // Media element now has frames ready or started playing
+      if (
+        !isStreamHealthy(streamRef.current) ||
+        (boundVideo && (boundVideo.currentSrc || boundVideo.src) !== lastCapturedSrc)
+      ) {
+        scheduleRecapture(50);
+      }
+    };
+
+    const attachVideoListeners = (video: HTMLVideoElement) => {
+      if (boundVideo === video) return;
+      detachVideoListeners(boundVideo);
+      boundVideo = video;
+
+      video.addEventListener("emptied", onVideoReset);
+      video.addEventListener("loadstart", onVideoReset);
+      video.addEventListener("loadeddata", onVideoReady);
+      video.addEventListener("canplay", onVideoReady);
+      video.addEventListener("playing", onVideoReady);
+    };
 
     const captureCurrentVideo = () => {
-      if (cancelled || !enabled || !videoId) {
+      if (cancelled || !enabled) {
         return;
       }
 
       if (platform.isAdShowing?.()) {
         lastCapturedVideo = null;
+        lastCapturedSrc = "";
         stopCurrentStream();
         return;
       }
 
-      const video = platform.getMediaElement();
+      const media = platform.getMediaElement();
 
-      if (!video) {
-        console.warn("[Lyrics] No video element found to capture stream.");
+      if (!media || !(media instanceof HTMLVideoElement)) {
         stopCurrentStream();
         return;
       }
 
-      if (!(video instanceof HTMLVideoElement)) {
-        stopCurrentStream();
+      attachVideoListeners(media);
+
+      const currentSrc = media.currentSrc || media.src || "";
+      const isHealthy = isStreamHealthy(streamRef.current);
+      const isSameVideoAndSrc =
+        media === lastCapturedVideo &&
+        currentSrc === lastCapturedSrc &&
+        lastCapturedSrc !== "";
+
+      if (isSameVideoAndSrc && isHealthy) {
         return;
       }
 
-      if (video === lastCapturedVideo && streamRef.current) {
+      // If video has not loaded current frame data yet, wait and retry
+      if (media.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        scheduleRecapture(150);
         return;
       }
 
       const nextStream = platform.captureVideoStream?.() ?? null;
 
-      if (!nextStream) {
-        console.warn(
-          "[Lyrics] video.captureStream is not supported in this browser.",
-        );
-        stopCurrentStream();
+      if (!nextStream || !isStreamHealthy(nextStream)) {
+        scheduleRecapture(250);
         return;
       }
 
-      lastCapturedVideo = video;
+      lastCapturedVideo = media;
+      lastCapturedSrc = currentSrc;
+
+      // Listen for when this stream's tracks end (e.g. video source detached/reset)
+      nextStream.getVideoTracks().forEach((track) => {
+        track.addEventListener(
+          "ended",
+          () => {
+            scheduleRecapture(100);
+          },
+          { once: true },
+        );
+      });
 
       setStream((oldStream) => {
         if (oldStream && oldStream !== nextStream) {
@@ -89,31 +168,24 @@ export function useVideoStream(
       });
     };
 
-    const scheduleRecapture = () => {
-      if (recaptureTimer !== null) {
-        window.clearTimeout(recaptureTimer);
-      }
+    // Initial capture attempt
+    scheduleRecapture(0);
 
-      recaptureTimer = window.setTimeout(() => {
-        recaptureTimer = null;
-        captureCurrentVideo();
-      }, 300);
-    };
-
-    captureCurrentVideo();
+    const unsubscribeTrackChange = platform.onTrackChange?.(() => {
+      scheduleRecapture(100);
+    });
 
     /**
      * YouTube toggles .ad-showing on .html5-video-player.
-     * When this class appears: clear the stream immediately.
-     * When it disappears: recapture the real video.
      */
     const player = document.querySelector(".html5-video-player");
     const mutationObserver = new MutationObserver(() => {
       if (platform.isAdShowing?.()) {
         lastCapturedVideo = null;
+        lastCapturedSrc = "";
         stopCurrentStream();
       } else {
-        scheduleRecapture();
+        scheduleRecapture(200);
       }
     });
 
@@ -125,19 +197,29 @@ export function useVideoStream(
     }
 
     /**
-     * Fallback polling because YouTube may replace DOM nodes without a clean
-     * mutation on the old player/video element.
+     * Fallback polling in case transitions occur without DOM mutation/events
      */
     const intervalId = window.setInterval(() => {
       if (platform.isAdShowing?.()) {
         lastCapturedVideo = null;
+        lastCapturedSrc = "";
         stopCurrentStream();
         return;
       }
 
       const currentVideo = platform.getMediaElement();
+      if (!(currentVideo instanceof HTMLVideoElement)) {
+        return;
+      }
 
-      if (!streamRef.current || currentVideo !== lastCapturedVideo) {
+      const currentSrc = currentVideo.currentSrc || currentVideo.src || "";
+      const healthy = isStreamHealthy(streamRef.current);
+
+      if (
+        !healthy ||
+        currentVideo !== lastCapturedVideo ||
+        (currentSrc && currentSrc !== lastCapturedSrc)
+      ) {
         captureCurrentVideo();
       }
     }, 1000);
@@ -149,10 +231,18 @@ export function useVideoStream(
         window.clearTimeout(recaptureTimer);
       }
 
+      detachVideoListeners(boundVideo);
+      boundVideo = null;
+
+      if (unsubscribeTrackChange) {
+        unsubscribeTrackChange();
+      }
+
       mutationObserver.disconnect();
       window.clearInterval(intervalId);
       stopCurrentStream();
     };
   }, [enabled, platform, videoId]);
+
   return stream;
 }

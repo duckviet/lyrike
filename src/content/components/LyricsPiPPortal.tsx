@@ -52,6 +52,20 @@ export default function LyricsPiPPortal({
   const { isHovered, showHover, startAutoHideTimer } = usePiPHover(pipRoot);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+
+    if (el.srcObject !== (videoStream ?? null)) {
+      el.srcObject = videoStream ?? null;
+    }
+
+    if (videoStream) {
+      el.play().catch(() => {});
+    }
+  }, [videoStream]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = containerRef.current;
@@ -180,11 +194,22 @@ export default function LyricsPiPPortal({
         <div className="absolute inset-0 z-below overflow-hidden pointer-events-none">
           <video
             ref={(el) => {
+              videoRef.current = el;
               if (!el) return;
 
-              if (el.srcObject !== videoStream) {
+              if (el.srcObject !== (videoStream ?? null)) {
                 el.srcObject = videoStream ?? null;
               }
+
+              if (videoStream && el.paused) {
+                el.play().catch(() => {});
+              }
+            }}
+            onLoadedMetadata={(e) => {
+              e.currentTarget.play().catch(() => {});
+            }}
+            onCanPlay={(e) => {
+              e.currentTarget.play().catch(() => {});
             }}
             autoPlay
             muted

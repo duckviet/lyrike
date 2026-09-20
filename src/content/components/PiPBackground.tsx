@@ -18,9 +18,19 @@ export function PiPBackground({
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <video
           ref={(el) => {
-            if (el && el.srcObject !== videoStream) {
-              el.srcObject = videoStream;
+            if (!el) return;
+            if (el.srcObject !== (videoStream ?? null)) {
+              el.srcObject = videoStream ?? null;
             }
+            if (videoStream && el.paused) {
+              el.play().catch(() => {});
+            }
+          }}
+          onLoadedMetadata={(e) => {
+            e.currentTarget.play().catch(() => {});
+          }}
+          onCanPlay={(e) => {
+            e.currentTarget.play().catch(() => {});
           }}
           autoPlay
           muted

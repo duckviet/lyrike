@@ -54,6 +54,11 @@ export function queryText(selectors: string[]): string {
 }
 
 export function getBestMediaElement(): HTMLVideoElement | HTMLAudioElement | null {
+  const mainVideo = getMainVideoElement();
+  if (mainVideo) {
+    return mainVideo;
+  }
+
   const mediaElements = Array.from(
     document.querySelectorAll<HTMLMediaElement>("video, audio"),
   );
