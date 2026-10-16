@@ -1,9 +1,19 @@
-import React, { useEffect } from "react";
+import React, { createContext, useContext, useEffect, useId } from "react";
 import { useTranslation } from "react-i18next";
-import { PIP_LAYOUT_MODE, Settings, WatchInfo } from "../shared/types";
+import {
+  PIP_LYRIC_DISPLAY,
+  PIP_META_STYLE,
+  Settings,
+  WatchInfo,
+} from "../shared/types";
 import { FONTS } from "../constants/settings";
 import { ReadmeSection } from "./ReadmeSection";
 import { ReportBugSection } from "./ReportBugSection";
+
+/** Ties a visible label to the control rendered inside its Field. */
+const FieldContext = createContext<{ controlId?: string; labelId?: string }>(
+  {},
+);
 
 interface SliderProps {
   value: number;
@@ -24,16 +34,20 @@ function Slider({
   unit = "",
   displayValue,
 }: SliderProps): React.JSX.Element {
+  const { controlId, labelId } = useContext(FieldContext);
   return (
     <div className="flex items-center gap-[10px]">
       <input
+        id={controlId}
+        aria-labelledby={labelId}
+        aria-valuetext={displayValue ?? `${value}${unit}`}
         type="range"
         min={min}
         max={max}
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="yl-slider flex-1"
+        className="yl-slider yl-focus-ring flex-1"
       />
       <span className="min-w-[48px] text-right text-[12px] text-text-secondary tabular-nums">
         {displayValue ?? `${value}${unit}`}
@@ -45,24 +59,32 @@ function Slider({
 interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  id?: string;
+  labelId?: string;
 }
-function Toggle({ checked, onChange }: ToggleProps): React.JSX.Element {
+function Toggle({
+  checked,
+  onChange,
+  id,
+  labelId,
+}: ToggleProps): React.JSX.Element {
   return (
     <button
+      id={id}
       type="button"
       role="switch"
       aria-checked={checked}
-      className={`w-11 h-6 rounded-full cursor-pointer relative transition-colors duration-200 shrink-0 ${
+      aria-labelledby={labelId}
+      className={`yl-focus-ring relative w-11 h-6 rounded-full border cursor-pointer transition-colors duration-200 shrink-0 ${
         checked
-          ? "bg-text-accent"
-          : "bg-bg-tertiary border border-border-subtle"
+          ? "bg-text-accent border-transparent"
+          : "bg-bg-tertiary border-border-subtle"
       }`}
       onClick={() => onChange(!checked)}
     >
       <span
-        className={`absolute top-[1.45px] w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${
-          checked ? "right-0" : "left-0"
-        }`}
+        className="absolute top-px left-px w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200"
+        style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
       />
     </button>
   );
@@ -111,7 +133,8 @@ export function CollapsibleSection({
       <button
         type="button"
         onClick={onToggle}
-        className="flex items-center justify-between w-full text-left cursor-pointer group py-1 select-none border-none bg-transparent outline-none"
+        className="yl-focus-ring flex items-center justify-between w-full text-left cursor-pointer group py-1 select-none border-none bg-transparent outline-none"
+        aria-expanded={isOpen}
       >
         <h3 className="text-[12px] font-semibold uppercase tracking-wider text-text-accent group-hover:text-text-accent/80 transition-colors duration-150">
           {title}
@@ -161,16 +184,35 @@ function Field({
   hint?: string;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const uid = useId();
+  const controlId = `${uid}-control`;
+  const labelId = `${uid}-label`;
+  const hintId = `${uid}-hint`;
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1">
-        <label className="text-[13px] text-text-primary">{label}</label>
+        <label
+          id={labelId}
+          htmlFor={controlId}
+          className="text-[13px] text-text-primary"
+        >
+          {label}
+        </label>
         {hint && (
           <div className="relative group">
-            <div className="rounded-full text-text-secondary text-[12px] flex items-center justify-center cursor-default select-none leading-none">
+            <button
+              type="button"
+              aria-label={label}
+              aria-describedby={hintId}
+              className="yl-focus-ring rounded-full border-none bg-transparent p-0 text-text-secondary text-[12px] flex items-center justify-center cursor-default select-none leading-none"
+            >
               ⓘ
-            </div>
-            <div className="absolute bottom-full left-[-8px] mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[999]">
+            </button>
+            <div
+              id={hintId}
+              role="tooltip"
+              className="absolute bottom-full left-[-8px] mb-2 w-max max-w-[200px] px-2 py-1.5 bg-bg-secondary border border-border-subtle rounded text-[11px] text-text-secondary leading-snug shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-[999]"
+            >
               {hint}
               {/* Arrow */}
               <div className="absolute top-full left-[14px] -translate-x-1/2 border-4 border-transparent border-t-border-subtle" />
@@ -179,7 +221,9 @@ function Field({
           </div>
         )}
       </div>
-      {children}
+      <FieldContext.Provider value={{ controlId, labelId }}>
+        {children}
+      </FieldContext.Provider>
     </div>
   );
 }
@@ -194,17 +238,31 @@ function ToggleRow({
   checked: boolean;
   onChange: (v: boolean) => void;
 }): React.JSX.Element {
+  const uid = useId();
+  const toggleId = `${uid}-toggle`;
+  const labelId = `${uid}-label`;
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-px flex-1 min-w-0">
-        <label className="text-[13px] text-text-primary">{label}</label>
+        <label
+          id={labelId}
+          htmlFor={toggleId}
+          className="text-[13px] text-text-primary"
+        >
+          {label}
+        </label>
         {hint && (
           <span className="text-[11px] text-text-secondary leading-snug">
             {hint}
           </span>
         )}
       </div>
-      <Toggle checked={checked} onChange={onChange} />
+      <Toggle
+        id={toggleId}
+        labelId={labelId}
+        checked={checked}
+        onChange={onChange}
+      />
     </div>
   );
 }
@@ -218,13 +276,21 @@ function RadioGroup<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }): React.JSX.Element {
+  const { controlId, labelId } = useContext(FieldContext);
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      id={controlId}
+      role="radiogroup"
+      aria-labelledby={labelId}
+      className="flex flex-col gap-2"
+    >
       {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
-          className={`flex items-start gap-3 p-3 rounded-md border text-left transition-all duration-150 cursor-pointer ${
+          role="radio"
+          aria-checked={value === opt.value}
+          className={`yl-focus-ring flex items-start gap-3 p-3 rounded-md border text-left transition-all duration-150 cursor-pointer ${
             value === opt.value
               ? "bg-text-accent/10 border-text-accent"
               : "bg-bg-tertiary border-border-subtle hover:border-text-muted"
@@ -255,6 +321,20 @@ function RadioGroup<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+function SelectControl(
+  props: React.SelectHTMLAttributes<HTMLSelectElement>,
+): React.JSX.Element {
+  const { controlId, labelId } = useContext(FieldContext);
+  return (
+    <select
+      id={controlId}
+      aria-labelledby={labelId}
+      {...props}
+      className={`yl-focus-ring ${props.className ?? ""}`}
+    />
   );
 }
 
@@ -338,7 +418,7 @@ export function SettingsPanel({
           label={t("settings.typography.font_family.label")}
           hint={t("settings.typography.font_family.hint")}
         >
-          <select
+          <SelectControl
             className={selectClass}
             value={settings.fontFamily}
             onChange={(e) => handleFontFamilyChange(e.target.value)}
@@ -348,7 +428,7 @@ export function SettingsPanel({
                 {f.label}
               </option>
             ))}
-          </select>
+          </SelectControl>
         </Field>
 
         <Field
@@ -412,7 +492,7 @@ export function SettingsPanel({
             label={t("settings.typography.font_style.label")}
             hint={t("settings.typography.font_style.hint")}
           >
-            <select
+            <SelectControl
               className={selectClass}
               value={settings.fontStyle}
               onChange={(e) =>
@@ -422,9 +502,13 @@ export function SettingsPanel({
                 )
               }
             >
-              <option value="normal">Normal</option>
-              <option value="italic">Italic</option>
-            </select>
+              <option value="normal">
+                {t("settings.typography.font_style.normal")}
+              </option>
+              <option value="italic">
+                {t("settings.typography.font_style.italic")}
+              </option>
+            </SelectControl>
           </Field>
         )}
 
@@ -432,17 +516,21 @@ export function SettingsPanel({
           label={t("settings.typography.text_align.label")}
           hint={t("settings.typography.text_align.hint")}
         >
-          <select
+          <SelectControl
             className={selectClass}
             value={settings.textAlign}
             onChange={(e) =>
               handleChange("textAlign", e.target.value as Settings["textAlign"])
             }
           >
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-            <option value="right">Right</option>
-          </select>
+            <option value="left">{t("settings.typography.text_align.left")}</option>
+            <option value="center">
+              {t("settings.typography.text_align.center")}
+            </option>
+            <option value="right">
+              {t("settings.typography.text_align.right")}
+            </option>
+          </SelectControl>
         </Field>
       </Section>
 
@@ -581,7 +669,6 @@ export function SettingsPanel({
               {
                 value: "default",
                 label: t("settings.pip.background_mode.default"),
-                hint: t("settings.pip.background_mode.hint"),
               },
               {
                 value: "color",
@@ -602,27 +689,86 @@ export function SettingsPanel({
           />
         </Field>
 
+        {(settings.pipBackgroundMode === "thumbnail" ||
+          settings.pipBackgroundMode === "video") && (
+          <>
+            <Field
+              label={t("settings.pip.overlay_opacity.label")}
+              hint={t("settings.pip.overlay_opacity.hint")}
+            >
+              <Slider
+                value={settings.pipOverlayOpacity}
+                onChange={(v) => handleChange("pipOverlayOpacity", v)}
+                min={0}
+                max={80}
+                unit="%"
+              />
+            </Field>
+
+            <Field
+              label={t("settings.pip.background_blur.label")}
+              hint={t("settings.pip.background_blur.hint")}
+            >
+              <Slider
+                value={settings.pipBackgroundBlur}
+                onChange={(v) => handleChange("pipBackgroundBlur", v)}
+                min={0}
+                max={40}
+                unit="px"
+              />
+            </Field>
+          </>
+        )}
+
         <Field
-          label={t("settings.pip.layout_mode.label")}
-          hint={t("settings.pip.layout_mode.hint")}
+          label={t("settings.pip.lyric_display.label")}
+          hint={t("settings.pip.lyric_display.hint")}
         >
           <RadioGroup
-            value={settings.pipLayoutMode}
-            onChange={(v) => handleChange("pipLayoutMode", v)}
+            value={settings.pipLyricDisplay}
+            onChange={(v) => handleChange("pipLyricDisplay", v)}
             options={[
               {
-                value: PIP_LAYOUT_MODE.CLASSIC,
-                label: t("settings.pip.layout_mode.classic"),
-                hint: t("settings.pip.layout_mode.classic_hint"),
+                value: PIP_LYRIC_DISPLAY.CLASSIC,
+                label: t("settings.pip.lyric_display.classic"),
+                hint: t("settings.pip.lyric_display.classic_hint"),
               },
               {
-                value: PIP_LAYOUT_MODE.SPLIT,
-                label: t("settings.pip.layout_mode.split"),
-                hint: t("settings.pip.layout_mode.split_hint"),
+                value: PIP_LYRIC_DISPLAY.POSTER,
+                label: t("settings.pip.lyric_display.poster"),
+                hint: t("settings.pip.lyric_display.poster_hint"),
               },
             ]}
           />
         </Field>
+
+        <ToggleRow
+          label={t("settings.pip.show_meta.label")}
+          hint={t("settings.pip.show_meta.hint")}
+          checked={settings.pipShowMeta}
+          onChange={(v) => handleChange("pipShowMeta", v)}
+        />
+
+        {settings.pipShowMeta && (
+          <Field label={t("settings.pip.meta_style.label")}>
+            <RadioGroup
+              value={settings.pipMetaStyle}
+              onChange={(v) => handleChange("pipMetaStyle", v)}
+              options={[
+                {
+                  value: PIP_META_STYLE.VINYL,
+                  label: t("settings.pip.meta_style.vinyl"),
+                  hint: t("settings.pip.meta_style.vinyl_hint"),
+                },
+                {
+                  value: PIP_META_STYLE.COVER,
+                  label: t("settings.pip.meta_style.cover"),
+                  hint: t("settings.pip.meta_style.cover_hint"),
+                },
+              ]}
+            />
+          </Field>
+        )}
 
         {/* <Field
           label={t("settings.pip.info_collapse_width.label")}
@@ -658,7 +804,7 @@ export function SettingsPanel({
           label={t("settings.language.label")}
           hint={t("settings.language.hint")}
         >
-          <select
+          <SelectControl
             className={selectClass}
             value={settings.language}
             onChange={(e) =>
@@ -668,7 +814,7 @@ export function SettingsPanel({
             <option value="auto">{t("settings.language.auto")}</option>
             <option value="vi">{t("settings.language.vi")}</option>
             <option value="en">{t("settings.language.en")}</option>
-          </select>
+          </SelectControl>
         </Field>
       </Section>
 

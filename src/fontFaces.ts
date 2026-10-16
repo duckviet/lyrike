@@ -10,147 +10,147 @@ export function buildFontFaceCss(): string {
   return `
 @font-face {
   font-family: "Amatic SC";
-  src: url("${font("fonts/Amatic_SC/AmaticSC-Regular.ttf")}") format("truetype");
+  src: url("${font("fonts/Amatic_SC/AmaticSC-Regular.woff2")}") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Amatic SC";
-  src: url("${font("fonts/Amatic_SC/AmaticSC-Bold.ttf")}") format("truetype");
+  src: url("${font("fonts/Amatic_SC/AmaticSC-Bold.woff2")}") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Cal Sans";
-  src: url("${font("fonts/Cal_Sans/CalSans-Regular.ttf")}") format("truetype");
+  src: url("${font("fonts/Cal_Sans/CalSans-Regular.woff2")}") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-ExtraLight.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-ExtraLight.woff2")}") format("woff2");
   font-weight: 200;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-ExtraLightItalic.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-ExtraLightItalic.woff2")}") format("woff2");
   font-weight: 200;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-Light.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-Light.woff2")}") format("woff2");
   font-weight: 300;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-LightItalic.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-LightItalic.woff2")}") format("woff2");
   font-weight: 300;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-Regular.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-Regular.woff2")}") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-Italic.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-Italic.woff2")}") format("woff2");
   font-weight: 400;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-Medium.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-Medium.woff2")}") format("woff2");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-MediumItalic.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-MediumItalic.woff2")}") format("woff2");
   font-weight: 500;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-SemiBold.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-SemiBold.woff2")}") format("woff2");
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-SemiBoldItalic.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-SemiBoldItalic.woff2")}") format("woff2");
   font-weight: 600;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-Bold.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-Bold.woff2")}") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Fahkwang";
-  src: url("${font("fonts/Fahkwang/Fahkwang-BoldItalic.ttf")}") format("truetype");
+  src: url("${font("fonts/Fahkwang/Fahkwang-BoldItalic.woff2")}") format("woff2");
   font-weight: 700;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Google Sans";
-  src: url("${font("fonts/Google_Sans/GoogleSans-Italic-VariableFont_GRAD,opsz,wght.ttf")}") format("truetype");
+  src: url("${font("fonts/Google_Sans/GoogleSans-Italic.woff2")}") format("woff2");
   font-weight: 100 900;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Playwrite NO";
-  src: url("${font("fonts/Playwrite_NO/PlaywriteNO-VariableFont_wght.ttf")}") format("truetype");
+  src: url("${font("fonts/Playwrite_NO/PlaywriteNO-VariableFont_wght.woff2")}") format("woff2");
   font-weight: 100 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Tinos";
-  src: url("${font("fonts/Tinos/Tinos-Regular.ttf")}") format("truetype");
+  src: url("${font("fonts/Tinos/Tinos-Regular.woff2")}") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Tinos";
-  src: url("${font("fonts/Tinos/Tinos-Italic.ttf")}") format("truetype");
+  src: url("${font("fonts/Tinos/Tinos-Italic.woff2")}") format("woff2");
   font-weight: 400;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Tinos";
-  src: url("${font("fonts/Tinos/Tinos-Bold.ttf")}") format("truetype");
+  src: url("${font("fonts/Tinos/Tinos-Bold.woff2")}") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Tinos";
-  src: url("${font("fonts/Tinos/Tinos-BoldItalic.ttf")}") format("truetype");
+  src: url("${font("fonts/Tinos/Tinos-BoldItalic.woff2")}") format("woff2");
   font-weight: 700;
   font-style: italic;
   font-display: swap;

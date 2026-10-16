@@ -5,6 +5,8 @@ import { PIP_WINDOW_HEIGHT, PIP_WINDOW_WIDTH } from "../constants/ui";
 import { LyricsState, LyricLine, Settings, ThemeVars } from "../shared/types";
 import { PiPActionBar } from "./PiPActionBar";
 import { PiPSplitInfoPanel } from "./PiPSplitInfoPanel";
+import { PiPPosterLyrics } from "./PiPPosterLyrics";
+import { DEFAULT_SETTINGS } from "../shared/settings";
 import { usePiPHover } from "../hooks/usePiPHover";
 
 interface LyricsPiPPortalProps {
@@ -97,7 +99,49 @@ export default function LyricsPiPPortal({
     settings?.pipBackgroundMode === "thumbnail" && thumbnail
   );
 
-  const isSplitLayout = settings?.pipLayoutMode === "split";
+  // The overlay is the *only* thing that darkens the PiP video/thumbnail:
+  // 0% shows the picture untouched.
+  const overlayOpacity =
+    Math.max(
+      0,
+      Math.min(
+        90,
+        settings?.pipOverlayOpacity ?? DEFAULT_SETTINGS.pipOverlayOpacity,
+      ),
+    ) / 100;
+  const defaultOverlay = DEFAULT_SETTINGS.pipOverlayOpacity / 100;
+  const backgroundBlur = Math.max(
+    0,
+    Math.min(40, settings?.pipBackgroundBlur ?? 20),
+  );
+  const backgroundMediaStyle: React.CSSProperties = {
+    filter: `blur(${backgroundBlur}px)`,
+    // Scale up just enough to hide the soft edges the blur creates.
+    transform: `scale(${1 + backgroundBlur * 0.005})`,
+  };
+  // The sharper / brighter the background, the harder the text is to read:
+  // fade in a dark halo behind the text. Zero at the defaults (65% / 20px).
+  const textPad =
+    showVideo || showThumbnail
+      ? Math.min(
+          1,
+          0.5 * Math.max(0, 1 - backgroundBlur / 20) +
+            0.5 * Math.max(0, 1 - overlayOpacity / defaultOverlay),
+        )
+      : 0;
+  const textHalo =
+    textPad > 0
+      ? [
+          `0 1px 3px rgba(0,0,0,${(0.3 * textPad).toFixed(3)})`,
+          `0 0 12px rgba(0,0,0,${(0.3 * textPad).toFixed(3)})`,
+        ].join(", ")
+      : undefined;
+
+  const isPosterLayout = settings?.pipLyricDisplay === "poster";
+  const showMeta = !!settings?.pipShowMeta;
+  const metaStyle = settings?.pipMetaStyle ?? "vinyl";
+  // Classic lyrics + meta = lyrics beside an info panel (vinyl/cover).
+  const isSplitLayout = !isPosterLayout && showMeta;
   const collapseWidth = Math.max(
     320,
     Number(settings?.pipInfoCollapseWidth ?? 400),
@@ -155,7 +199,7 @@ export default function LyricsPiPPortal({
     return () => {
       observer.disconnect();
     };
-  }, [pipRoot, settings?.pipLayoutMode, showInfoPanel]);
+  }, [pipRoot, isPosterLayout, showInfoPanel]);
 
   if (!pipRoot) return null;
 
@@ -171,6 +215,8 @@ export default function LyricsPiPPortal({
           overflow: "hidden",
           position: "relative",
           "--pip-bg-opacity": showVideo || showThumbnail ? 0 : pipBgOpacity,
+          // Consumed only by the active lyric line (see --pip-text-halo users).
+          "--pip-text-halo": textHalo ?? "0 0 0 transparent",
           // Nếu có video/ảnh nền thì làm trong suốt hoàn toàn các biến màu nền
           "--color-bg-primary":
             showVideo || showThumbnail
@@ -214,29 +260,60 @@ export default function LyricsPiPPortal({
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover blur-bg opacity-70"
+            className="w-full h-full object-cover"
+            style={backgroundMediaStyle}
           />
 
           <div
             className="absolute inset-0"
-            style={{ background: "rgba(0, 0, 0, 0.2)" }}
+            style={{ background: `rgba(0, 0, 0, ${overlayOpacity})` }}
           />
         </div>
       ) : showThumbnail ? (
         <div className="absolute inset-0 z-below overflow-hidden pointer-events-none">
           <img
             src={thumbnail}
-            className="w-full h-full object-cover blur-bg opacity-70"
+            className="w-full h-full object-cover"
+            style={backgroundMediaStyle}
             alt=""
           />
           <div
             className="absolute inset-0"
-            style={{ background: "rgba(0, 0, 0, 0.2)" }}
+            style={{ background: `rgba(0, 0, 0, ${overlayOpacity})` }}
           />
         </div>
       ) : null}
 
-      {isSplitLayout ? (
+      {isPosterLayout ? (
+        <>
+          <PiPPosterLyrics
+            lyricsState={lyricsState}
+            syncedLines={syncedLines}
+            activeIndex={activeIndex}
+            settings={settings}
+            thumbnail={thumbnail}
+            title={title}
+            artist={artist}
+            showOwnBackdrop={!showVideo && !showThumbnail}
+            vignetteStrength={
+              showVideo || showThumbnail
+                ? Math.min(1, overlayOpacity / defaultOverlay)
+                : 1
+            }
+            showMeta={showMeta}
+            metaStyle={metaStyle}
+            isPaused={playerControls.isPaused}
+          />
+          <PiPActionBar
+            isVisible={isHovered}
+            playerControls={playerControls}
+            lyricsId={lyricsId}
+            artist={artist}
+            title={title}
+            videoId={videoId}
+          />
+        </>
+      ) : isSplitLayout ? (
         <div
           style={{
             height: "100%",
@@ -259,6 +336,7 @@ export default function LyricsPiPPortal({
                 title={title}
                 artist={artist}
                 lyricsId={lyricsId}
+                metaStyle={metaStyle}
                 playerControls={playerControls}
               />
             </div>

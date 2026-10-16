@@ -41,11 +41,16 @@
       },
       "font_style": {
         "label": "Font Style",
-        "hint": "Style of the lyrics (normal or italic)."
+        "hint": "Style of the lyrics (normal or italic).",
+        "normal": "Normal",
+        "italic": "Italic"
       },
       "text_align": {
         "label": "Text Align",
-        "hint": "Alignment of the lyric lines."
+        "hint": "Alignment of the lyric lines.",
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
       }
     },
     "layout": {
@@ -76,8 +81,8 @@
         "hint": "Opacity of non-active lines. Lower values make the active line stand out."
       },
       "background_opacity": {
-        "label": "Background Opacity",
-        "hint": "Opacity of the widget background. 100% is fully opaque."
+        "label": "Solid Background Opacity",
+        "hint": "Opacity of the solid background of the floating widget and of the PiP window in Default mode. Thumbnail and Video backgrounds use the overlay settings in the PiP section."
       },
       "glide_duration": {
         "label": "Glide Duration",
@@ -103,13 +108,32 @@
         "thumbnail": "Thumbnail Background",
         "video": "Video Background"
       },
-      "layout_mode": {
-        "label": "PiP Layout",
-        "hint": "Choose how content is arranged inside the PiP window.",
-        "classic": "Classic (Lyrics only)",
-        "classic_hint": "Show lyrics in full width with an overlay action bar.",
-        "split": "Split (Info + Lyrics)",
-        "split_hint": "Show thumbnail/title/artist and keep controls under it."
+      "overlay_opacity": {
+        "label": "Overlay Darkness",
+        "hint": "Darkness of the overlay above the PiP background. When this or the blur is low, a soft dark halo is added behind the text so it stays readable."
+      },
+      "background_blur": {
+        "label": "Background Blur",
+        "hint": "Blur of the PiP video/thumbnail background. Lower values keep the picture sharper."
+      },
+      "lyric_display": {
+        "label": "Lyric Display",
+        "hint": "Choose how lyrics are shown inside the PiP window.",
+        "classic": "Classic",
+        "classic_hint": "Scrolling lyric list with the active line highlighted.",
+        "poster": "Poster",
+        "poster_hint": "Big animated lines with sliding ghost text in the background."
+      },
+      "show_meta": {
+        "label": "Show Track Info",
+        "hint": "Show artwork, title and artist next to the lyrics."
+      },
+      "meta_style": {
+        "label": "Artwork Style",
+        "vinyl": "Vinyl Record",
+        "vinyl_hint": "Spinning record with a tonearm that follows play/pause.",
+        "cover": "Album Cover",
+        "cover_hint": "Polaroid-style album cover."
       },
       "info_collapse_width": {
         "label": "Collapse Info Panel Below",

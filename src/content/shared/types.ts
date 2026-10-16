@@ -5,12 +5,19 @@ import {
   TextAlign,
 } from "../constants/settings";
 
-export const PIP_LAYOUT_MODE = {
+export const PIP_LYRIC_DISPLAY = {
   CLASSIC: "classic",
-  SPLIT: "split",
+  POSTER: "poster",
 } as const;
-export type PipLayoutMode =
-  (typeof PIP_LAYOUT_MODE)[keyof typeof PIP_LAYOUT_MODE];
+export type PipLyricDisplay =
+  (typeof PIP_LYRIC_DISPLAY)[keyof typeof PIP_LYRIC_DISPLAY];
+
+export const PIP_META_STYLE = {
+  VINYL: "vinyl",
+  COVER: "cover",
+} as const;
+export type PipMetaStyle =
+  (typeof PIP_META_STYLE)[keyof typeof PIP_META_STYLE];
 
 export interface WatchInfo {
   videoId: string;
@@ -76,7 +83,13 @@ export interface Settings {
   autoScroll: boolean;
   hideFloatingWhenPiPOpen: boolean;
   pipBackgroundMode: PipBackgroundMode;
-  pipLayoutMode: PipLayoutMode;
+  /** Darkness (%) of the overlay above the PiP video/thumbnail background. */
+  pipOverlayOpacity: number;
+  /** Blur (px) of the PiP video/thumbnail background. */
+  pipBackgroundBlur: number;
+  pipLyricDisplay: PipLyricDisplay;
+  pipShowMeta: boolean;
+  pipMetaStyle: PipMetaStyle;
   pipInfoCollapseWidth: number;
   textAlign: TextAlign;
   language: Language;

@@ -4,7 +4,7 @@ import {
   PIP_BG_MODE,
   TEXT_ALIGN,
 } from "../constants/settings";
-import { PIP_LAYOUT_MODE, Settings } from "./types";
+import { PIP_LYRIC_DISPLAY, PIP_META_STYLE, Settings } from "./types";
 
 export const CURRENT_SETTINGS_VERSION = 1;
 
@@ -24,7 +24,11 @@ export const DEFAULT_SETTINGS: Settings = {
   autoScroll: true,
   hideFloatingWhenPiPOpen: false,
   pipBackgroundMode: PIP_BG_MODE.VIDEO,
-  pipLayoutMode: PIP_LAYOUT_MODE.CLASSIC,
+  pipOverlayOpacity: 65,
+  pipBackgroundBlur: 20,
+  pipLyricDisplay: PIP_LYRIC_DISPLAY.CLASSIC,
+  pipShowMeta: false,
+  pipMetaStyle: PIP_META_STYLE.VINYL,
   pipInfoCollapseWidth: 400,
   textAlign: TEXT_ALIGN.LEFT,
   language: LANGUAGE.EN,
@@ -40,6 +44,30 @@ export function getDefaultSettings(): Settings {
   return { ...DEFAULT_SETTINGS };
 }
 
+const VALID_LYRIC_DISPLAYS = Object.values(PIP_LYRIC_DISPLAY) as string[];
+const VALID_META_STYLES = Object.values(PIP_META_STYLE) as string[];
+
+// Older versions stored a single `pipLayoutMode` (classic | split | poster).
+// Map it onto lyric display + meta toggle/style, then drop it.
+function migrateLegacyLayout(
+  stored: Record<string, unknown>,
+): Record<string, unknown> {
+  const { pipLayoutMode, ...rest } = stored;
+  if (typeof pipLayoutMode !== "string" || "pipLyricDisplay" in rest) {
+    return rest;
+  }
+  return {
+    ...rest,
+    pipLyricDisplay:
+      pipLayoutMode === "poster"
+        ? PIP_LYRIC_DISPLAY.POSTER
+        : PIP_LYRIC_DISPLAY.CLASSIC,
+    pipShowMeta: pipLayoutMode !== "classic",
+    pipMetaStyle:
+      pipLayoutMode === "poster" ? PIP_META_STYLE.COVER : PIP_META_STYLE.VINYL,
+  };
+}
+
 export async function loadSettings(): Promise<Settings> {
   try {
     const result = await chrome.storage.local.get(SETTINGS_KEY_VALUE);
@@ -49,18 +77,19 @@ export async function loadSettings(): Promise<Settings> {
       // Merge stored settings with defaults to ensure all new fields exist
       const merged: Settings = {
         ...DEFAULT_SETTINGS,
-        ...storedSettings,
+        ...migrateLegacyLayout(storedSettings as Record<string, unknown>),
       };
 
       // Validation logic: Nếu settings quá cũ hoặc có giá trị không hợp lệ
       const isInvalid =
-         !merged.version ||
+        !merged.version ||
         merged.version < CURRENT_SETTINGS_VERSION ||
         typeof merged.lineGap !== "number" ||
         typeof merged.pipInfoCollapseWidth !== "number" ||
         typeof merged.prioritizeKaraoke !== "boolean" ||
-        (merged.pipLayoutMode !== PIP_LAYOUT_MODE.CLASSIC &&
-          merged.pipLayoutMode !== PIP_LAYOUT_MODE.SPLIT);
+        typeof merged.pipShowMeta !== "boolean" ||
+        !VALID_LYRIC_DISPLAYS.includes(merged.pipLyricDisplay) ||
+        !VALID_META_STYLES.includes(merged.pipMetaStyle);
 
       if (isInvalid) {
         console.warn("[Lyrike] Old or invalid settings detected, repairing...");
@@ -74,12 +103,12 @@ export async function loadSettings(): Promise<Settings> {
 
         if (!VALID_PIP_MODES.includes(merged.pipBackgroundMode))
           merged.pipBackgroundMode = DEFAULT_SETTINGS.pipBackgroundMode;
-        if (
-          merged.pipLayoutMode !== PIP_LAYOUT_MODE.CLASSIC &&
-          merged.pipLayoutMode !== PIP_LAYOUT_MODE.SPLIT
-        ) {
-          merged.pipLayoutMode = DEFAULT_SETTINGS.pipLayoutMode;
-        }
+        if (!VALID_LYRIC_DISPLAYS.includes(merged.pipLyricDisplay))
+          merged.pipLyricDisplay = DEFAULT_SETTINGS.pipLyricDisplay;
+        if (!VALID_META_STYLES.includes(merged.pipMetaStyle))
+          merged.pipMetaStyle = DEFAULT_SETTINGS.pipMetaStyle;
+        if (typeof merged.pipShowMeta !== "boolean")
+          merged.pipShowMeta = DEFAULT_SETTINGS.pipShowMeta;
         if (
           typeof merged.pipInfoCollapseWidth !== "number" ||
           !Number.isFinite(merged.pipInfoCollapseWidth) ||
@@ -139,7 +168,9 @@ export function subscribeSettingsChange(
       const rawValue = changes[SETTINGS_KEY_VALUE].newValue;
       const newValue = {
         ...DEFAULT_SETTINGS,
-        ...(typeof rawValue === "object" && rawValue !== null ? rawValue : {}),
+        ...(typeof rawValue === "object" && rawValue !== null
+          ? migrateLegacyLayout(rawValue as Record<string, unknown>)
+          : {}),
       } as Settings;
       callback(newValue);
     }

@@ -150,8 +150,126 @@ export interface SearchCandidate {
   albumName?: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LRCLIB client — follows https://lrclib.net/docs#implementation-requirements
+//
+//   - Identifies the client via `Lrclib-Client` (browsers forbid overriding
+//     `User-Agent`).
+//   - Sends requests sequentially with a short gap between them.
+//   - Honors `429 Too Many Requests` + `Retry-After`: no request is sent until
+//     the window has passed. The deadline lives in chrome.storage.session so it
+//     survives service-worker restarts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LRCLIB_MIN_INTERVAL_MS = 300;
+const LRCLIB_DEFAULT_RETRY_AFTER_MS = 60 * 1000;
+const LRCLIB_BLOCKED_UNTIL_KEY = "lrclib_blocked_until";
+const LRCLIB_HOMEPAGE = "https://chromewebstore.google.com/detail/jkddkopefokablebabnohoggiadolgkm?utm_source=item-share-cb";
+// Public, self-asserted application ID (not a credential), registered at
+// https://lrclib.net/developers
+const LRCLIB_APP_ID = "hOqT1RNbhz3KFOsG_IL90asW_0Hv6bY6z45avfi4-dA";
+
+let lrclibQueue: Promise<unknown> = Promise.resolve();
+let lrclibLastRequestAt = 0;
+let lrclibBlockedUntil = 0;
+
+export class LrclibRateLimitError extends Error {
+  constructor(public readonly retryAt: number) {
+    super(`LRCLIB rate limited until ${new Date(retryAt).toISOString()}`);
+    this.name = "LrclibRateLimitError";
+  }
+}
+
+export function resetLrclibClientState() {
+  lrclibQueue = Promise.resolve();
+  lrclibLastRequestAt = 0;
+  lrclibBlockedUntil = 0;
+}
+
+function lrclibClientHeader(): string {
+  const version = chrome.runtime.getManifest?.().version ?? "unknown";
+  return `Lyrike v${version} (${LRCLIB_HOMEPAGE})`;
+}
+
+/** Parses Retry-After (delta-seconds or HTTP date) into milliseconds. */
+function parseRetryAfterMs(value: string | null | undefined): number {
+  if (value) {
+    const seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+
+    const date = Date.parse(value);
+    if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
+  }
+  return LRCLIB_DEFAULT_RETRY_AFTER_MS;
+}
+
+async function getLrclibBlockedUntil(): Promise<number> {
+  try {
+    const stored = await chrome.storage.session?.get(LRCLIB_BLOCKED_UNTIL_KEY);
+    const value = stored?.[LRCLIB_BLOCKED_UNTIL_KEY];
+    if (typeof value === "number") {
+      lrclibBlockedUntil = Math.max(lrclibBlockedUntil, value);
+    }
+  } catch (e) {
+    console.warn("[Lyrics] Failed to read LRCLIB rate-limit state:", e);
+  }
+  return lrclibBlockedUntil;
+}
+
+async function setLrclibBlockedUntil(until: number): Promise<void> {
+  lrclibBlockedUntil = until;
+  try {
+    await chrome.storage.session?.set({ [LRCLIB_BLOCKED_UNTIL_KEY]: until });
+  } catch (e) {
+    console.warn("[Lyrics] Failed to persist LRCLIB rate-limit state:", e);
+  }
+}
+
+/**
+ * Single entry point for every LRCLIB request. Calls are queued so only one
+ * request is in flight at a time, spaced by LRCLIB_MIN_INTERVAL_MS.
+ * Throws LrclibRateLimitError while rate limited.
+ */
+export function lrclibFetch(url: string): Promise<Response> {
+  const run = async (): Promise<Response> => {
+    const blockedUntil = await getLrclibBlockedUntil();
+    if (Date.now() < blockedUntil) {
+      throw new LrclibRateLimitError(blockedUntil);
+    }
+
+    const wait = lrclibLastRequestAt + LRCLIB_MIN_INTERVAL_MS - Date.now();
+    if (wait > 0) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "Lrclib-Client": lrclibClientHeader(),
+          "Lrclib-App-Id": LRCLIB_APP_ID,
+        },
+      });
+
+      if (response.status === 429) {
+        const until =
+          Date.now() + parseRetryAfterMs(response.headers?.get("Retry-After"));
+        await setLrclibBlockedUntil(until);
+        throw new LrclibRateLimitError(until);
+      }
+
+      return response;
+    } finally {
+      lrclibLastRequestAt = Date.now();
+    }
+  };
+
+  const result = lrclibQueue.then(run, run);
+  lrclibQueue = result.catch(() => undefined);
+  return result;
+}
+
 export async function fetchLyricsById(id: number): Promise<LyricsData | null> {
-  const response = await fetch(`https://lrclib.net/api/get/${id}`);
+  const response = await lrclibFetch(`https://lrclib.net/api/get/${id}`);
 
   if (response.status === 404) {
     return null;
@@ -452,6 +570,14 @@ export function lyricsCacheKey({
   return `lyrics:${normalizeText(artistName)}:${normalizeText(trackName)}:${normalizeText(albumName)}`;
 }
 
+/** Negative-cache TTL: how long a "no result" search is not retried. */
+const LYRICS_MISS_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Storage key marking a candidate whose search returned no usable result. */
+export function lyricsMissKey(candidate: SearchCandidate): string {
+  return `lyrics_miss:${lyricsCacheKey(candidate)}`;
+}
+
 /**
  * Reads the local cache for a candidate without calling the search API.
  * Pass videoId to resolve the video-specific offset when available.
@@ -500,6 +626,14 @@ export async function searchOnce(
     await chrome.storage.local.remove(cacheKey);
   }
 
+  // Skip candidates that recently returned no usable result.
+  const missKey = lyricsMissKey(candidate);
+  const missedAt = (await chrome.storage.local.get(missKey))[missKey];
+  if (typeof missedAt === "number") {
+    if (Date.now() - missedAt < LYRICS_MISS_TTL_MS) return null;
+    await chrome.storage.local.remove(missKey);
+  }
+
   const url = new URL("https://lrclib.net/api/search");
   url.searchParams.set("track_name", trackName);
 
@@ -511,7 +645,7 @@ export async function searchOnce(
     url.searchParams.set("album_name", albumName);
   }
 
-  const response = await fetch(url.toString());
+  const response = await lrclibFetch(url.toString());
 
   if (!response.ok) {
     throw new Error(`LRCLIB error: ${response.status}`);
@@ -539,6 +673,8 @@ export async function searchOnce(
     await initializeLyricsOffset(best.id);
     // Persist full payload into the LRU payload cache
     void setCachedPayload(best.id, best);
+  } else {
+    await chrome.storage.local.set({ [missKey]: Date.now() });
   }
 
   return best;
@@ -899,7 +1035,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await chrome.storage.local.remove(`${LYRICS_PAYLOAD_PREFIX}${id}`);
             }
           }
-          await chrome.storage.local.remove(cacheKey);
+          await chrome.storage.local.remove([cacheKey, lyricsMissKey(candidate)]);
         }
       }
 

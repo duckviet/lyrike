@@ -52,6 +52,8 @@ import {
   SYNCED_LYRICS_BONUS,
   initializeLyricsOffset,
   setBlacklistMock,
+  resetLrclibClientState,
+  LrclibRateLimitError,
 } from "./background";
 import { LyricsData } from "./content/shared/types";
 
@@ -60,6 +62,7 @@ describe("background helper functions", () => {
     mockStore = {};
     vi.restoreAllMocks();
     setBlacklistMock({});
+    resetLrclibClientState();
   });
 
   describe("normalizeText", () => {
@@ -200,7 +203,10 @@ describe("background helper functions", () => {
       });
 
       expect(result).toEqual({ ...dummyAPIResult, offsetMs: 100 });
-      expect(fetchSpy).toHaveBeenCalledWith("https://lrclib.net/api/get/555");
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "https://lrclib.net/api/get/555",
+        expect.anything(),
+      );
     });
 
     test("searchOnce: cache miss should perform query search and cache result", async () => {
@@ -219,7 +225,8 @@ describe("background helper functions", () => {
 
       expect(result).toEqual(dummyAPIResult);
       expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringContaining("https://lrclib.net/api/search?track_name=Em&artist_name=Binz&album_name=Gap+Lai")
+        expect.stringContaining("https://lrclib.net/api/search?track_name=Em&artist_name=Binz&album_name=Gap+Lai"),
+        expect.anything(),
       );
       // Cache should be set
       expect(mockStore["lyrics:binz:em:gap lai"]).toBe("555#0");
@@ -278,6 +285,56 @@ describe("background helper functions", () => {
       expect(result).toEqual(dummyAPIResult);
       // Should have run search twice (candidate 1: with album, candidate 2: without album)
       expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test("lrclibFetch: should identify the client via Lrclib-Client header", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => [dummyAPIResult],
+      } as any);
+
+      await searchOnce({ trackName: "Em", artistName: "Binz" });
+
+      const init = fetchSpy.mock.calls[0][1] as RequestInit;
+      const headers = init.headers as Record<string, string>;
+      expect(headers["Lrclib-Client"]).toMatch(/^Lyrike v\S+ \(https:\/\/\S+\)$/);
+      expect(headers["Lrclib-App-Id"]).toBe(
+        "hOqT1RNbhz3KFOsG_IL90asW_0Hv6bY6z45avfi4-dA",
+      );
+    });
+
+    test("lrclibFetch: should honor 429 Retry-After and stop sending requests", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        status: 429,
+        ok: false,
+        headers: new Headers({ "Retry-After": "120" }),
+      } as any);
+
+      await expect(
+        searchOnce({ trackName: "Em", artistName: "Binz" }),
+      ).rejects.toBeInstanceOf(LrclibRateLimitError);
+
+      // A second call within the window must not hit the network.
+      await expect(
+        searchOnce({ trackName: "Khac", artistName: "Binz" }),
+      ).rejects.toBeInstanceOf(LrclibRateLimitError);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("searchOnce: should cache misses and skip repeat searches", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => [],
+      } as any);
+
+      const candidate = { trackName: "Nothing", artistName: "Nobody" };
+      expect(await searchOnce(candidate)).toBeNull();
+      expect(await searchOnce(candidate)).toBeNull();
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(typeof mockStore["lyrics_miss:lyrics:nobody:nothing:"]).toBe("number");
     });
 
     test("LRU cache: should save payload to storage and prune oldest when exceeding limit", async () => {

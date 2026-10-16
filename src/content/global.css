@@ -79,6 +79,12 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
+/* Visible keyboard focus for custom controls (outline is reset elsewhere). */
+.yl-focus-ring:focus-visible {
+  outline: 2px solid var(--color-text-accent);
+  outline-offset: 2px;
+}
+
 /* Custom range input */
 .yl-slider {
   -webkit-appearance: none;

@@ -41,11 +41,16 @@
       },
       "font_style": {
         "label": "Kiểu phông",
-        "hint": "Kiểu chữ (thông thường hoặc in nghiêng)."
+        "hint": "Kiểu chữ (thông thường hoặc in nghiêng).",
+        "normal": "Thông thường",
+        "italic": "In nghiêng"
       },
       "text_align": {
         "label": "Căn lề",
-        "hint": "Căn lề cho các dòng lyric."
+        "hint": "Căn lề cho các dòng lyric.",
+        "left": "Trái",
+        "center": "Giữa",
+        "right": "Phải"
       }
     },
     "layout": {
@@ -76,8 +81,8 @@
         "hint": "Độ mờ của các dòng không active. Giá trị nhỏ giúp dòng active nổi bật hơn."
       },
       "background_opacity": {
-        "label": "Độ mờ nền",
-        "hint": "Độ mờ của nền widget. 100% là đục hoàn toàn."
+        "label": "Độ đục nền đặc",
+        "hint": "Độ đục của nền đặc ở widget nổi và cửa sổ PiP chế độ Mặc định. Nền Thumbnail và Video dùng cài đặt lớp phủ ở mục PiP."
       },
       "glide_duration": {
         "label": "Tốc độ cuộn",
@@ -103,13 +108,32 @@
         "thumbnail": "Hình nền video (Thumbnail)",
         "video": "Video đang phát (Live)"
       },
-      "layout_mode": {
-        "label": "Bố cục PiP",
-        "hint": "Chọn cách sắp xếp nội dung trong cửa sổ PiP.",
-        "classic": "Cổ điển (Chỉ lyrics)",
-        "classic_hint": "Hiển thị lyrics toàn chiều rộng với action bar dạng overlay.",
-        "split": "Chia đôi (Info + Lyrics)",
-        "split_hint": "Hiển thị thumbnail/tên bài/ca sĩ và đặt action bar ngay bên dưới."
+      "overlay_opacity": {
+        "label": "Độ tối lớp phủ",
+        "hint": "Độ tối của lớp phủ phía trên nền PiP. Khi giá trị này hoặc độ nhoè thấp, chữ sẽ có thêm lớp đệm đen mờ phía sau để dễ đọc."
+      },
+      "background_blur": {
+        "label": "Độ nhoè nền",
+        "hint": "Độ nhoè của nền video/ảnh bìa PiP. Giá trị thấp giữ hình sắc nét hơn."
+      },
+      "lyric_display": {
+        "label": "Kiểu hiển thị lyric",
+        "hint": "Chọn cách hiển thị lyric trong cửa sổ PiP.",
+        "classic": "Bình thường",
+        "classic_hint": "Danh sách lyric cuộn, dòng đang hát được làm nổi bật.",
+        "poster": "Poster",
+        "poster_hint": "Lyric lớn có animation, chữ nền trượt phía sau."
+      },
+      "show_meta": {
+        "label": "Hiển thị thông tin bài hát",
+        "hint": "Hiện ảnh, tên bài và ca sĩ bên cạnh lyric."
+      },
+      "meta_style": {
+        "label": "Kiểu ảnh",
+        "vinyl": "Đĩa than (Vinyl)",
+        "vinyl_hint": "Đĩa quay, cần đọc nhấc lên/hạ xuống theo play/pause.",
+        "cover": "Ảnh bìa album",
+        "cover_hint": "Ảnh bìa dạng polaroid."
       },
       "info_collapse_width": {
         "label": "Ẩn info khi nhỏ hơn",

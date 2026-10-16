@@ -168,6 +168,11 @@ export function LyricsLines({
                 : ""
               }`}
             style={{
+              // Dark halo for readability over bright PiP backgrounds; only the
+              // active line gets it (the white glow from the class is kept).
+              textShadow: isActive
+                ? "0 0 20px rgba(255,255,255,0.15), var(--pip-text-halo, 0 0 0 transparent)"
+                : undefined,
               fontSize: isActive ? activeTextSize : textSize,
               fontWeight: isActive ? activeFontWeight : fontWeight,
               fontStyle: fontStyle,
@@ -248,8 +253,8 @@ function KaraokeWords({
               // transform: isSinging ? "scale(1.04)" : "scale(1)",
               transformOrigin: "center bottom",
               textShadow: isSinging
-                ? "0 0 14px var(--color-text-accent, rgba(180, 160, 255, 0.55))"
-                : "none",
+                ? "0 0 14px var(--color-text-accent, rgba(180, 160, 255, 0.55)), var(--pip-text-halo, 0 0 0 transparent)"
+                : "inherit",
               transition: "transform 0.18s ease, text-shadow 0.18s ease",
               willChange: "transform",
               ...(isSinging
