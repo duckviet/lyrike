@@ -75,16 +75,34 @@ function Toggle({
       role="switch"
       aria-checked={checked}
       aria-labelledby={labelId}
-      className={`yl-focus-ring relative w-11 h-6 rounded-full border cursor-pointer transition-colors duration-200 shrink-0 ${
+      className={`yl-focus-ring rounded-full cursor-pointer transition-colors duration-200 shrink-0 ${
         checked
           ? "bg-text-accent border-transparent"
           : "bg-bg-tertiary border-border-subtle"
       }`}
+      // Geometry is inline so the knob can never fall back to its static
+      // (centered) position if a utility class is missing from the CSS.
+      style={{
+        position: "relative",
+        boxSizing: "border-box",
+        width: 44,
+        height: 24,
+        padding: 0,
+        borderWidth: 1,
+        borderStyle: "solid",
+      }}
       onClick={() => onChange(!checked)}
     >
       <span
-        className="absolute top-px left-px w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200"
-        style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
+        className="bg-white rounded-full shadow-sm transition-transform duration-200"
+        style={{
+          position: "absolute",
+          top: 1,
+          left: 1,
+          width: 20,
+          height: 20,
+          transform: checked ? "translateX(20px)" : "translateX(0)",
+        }}
       />
     </button>
   );

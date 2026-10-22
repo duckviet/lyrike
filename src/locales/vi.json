@@ -185,5 +185,33 @@
       "attach_track": "Đính kèm thông tin bài hát hiện tại",
       "include_diagnostics": "Đính kèm chẩn đoán hệ thống (Phiên bản, Settings, v.v.)"
     }
+  },
+  "errors": {
+    "retry": "Thử lại",
+    "details": "Chi tiết: {{error}}",
+    "rate_limited": {
+      "title": "Gửi quá nhiều yêu cầu",
+      "hint": "Dịch vụ lyric (LRCLIB) yêu cầu chậm lại. Thử lại sau khoảng {{seconds}} giây."
+    },
+    "server_busy": {
+      "title": "Dịch vụ lyric đang bận",
+      "hint": "LRCLIB đang quá tải, lỗi nằm ở phía họ chứ không phải của bạn. Hãy thử lại sau ít phút."
+    },
+    "service_error": {
+      "title": "Dịch vụ lyric báo lỗi",
+      "hint": "LRCLIB không xử lý được yêu cầu. Thử lại sau, và hãy báo lỗi nếu cứ lặp lại."
+    },
+    "offline": {
+      "title": "Không kết nối được dịch vụ lyric",
+      "hint": "Kiểm tra kết nối mạng rồi thử lại."
+    },
+    "extension_unavailable": {
+      "title": "Lyrike vừa được cập nhật hoặc tải lại",
+      "hint": "Hãy tải lại trang này để tiếp tục lấy lyric."
+    },
+    "unknown": {
+      "title": "Không tải được lyric",
+      "hint": "Đã có lỗi xảy ra. Hãy thử lại, và báo lỗi nếu cứ lặp lại."
+    }
   }
 }

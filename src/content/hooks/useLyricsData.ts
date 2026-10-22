@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { LyricsData, LyricsState, WatchInfo } from "../shared/types";
+import {
+  LyricsData,
+  LyricsErrorCode,
+  LyricsState,
+  WatchInfo,
+} from "../shared/types";
 
 function createEmptyLyricsState(): LyricsState {
   return {
@@ -63,6 +68,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch:
           loading: false,
           data: null,
           error: "Chrome runtime is unavailable",
+          errorCode: "extension_unavailable",
         });
       });
       return;
@@ -97,10 +103,16 @@ export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch:
             return;
           }
           if (chrome.runtime.lastError) {
+            const message = chrome.runtime.lastError.message || "Chrome error";
+            // Happens after the extension is updated/reloaded while the tab
+            // is still open: only a page refresh can recover.
+            const invalidated =
+              /context invalidated|receiving end does not exist/i.test(message);
             setLyricsState({
               loading: false,
               data: null,
-              error: chrome.runtime.lastError.message || "Chrome error",
+              error: message,
+              errorCode: invalidated ? "extension_unavailable" : "unknown",
             });
             return;
           }
@@ -110,6 +122,8 @@ export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch:
               loading: false,
               data: null,
               error: response?.error || "Fetch failed",
+              errorCode: (response?.code as LyricsErrorCode) ?? "unknown",
+              retryAfterSec: response?.retryAfterSec,
             });
             return;
           }
@@ -128,6 +142,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch:
             loading: false,
             data: null,
             error: error instanceof Error ? error.message : "Fetch failed",
+            errorCode: "unknown",
           });
         });
       }

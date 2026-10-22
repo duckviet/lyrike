@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, RefObject } from "react";
 import { useTranslation } from "react-i18next";
+import { LyricsErrorNotice } from "./LyricsErrorNotice";
 import { LyricsLines } from "./LyricsLines";
 import {
   LyricsState,
@@ -219,9 +220,11 @@ export const LyricsContent = React.memo(function LyricsContent({
       {!lyricsState.loading && !lyricsState.data && (
         <div className="flex flex-col items-center justify-center p-lg text-center">
           <div className="text-[14px] leading-normal text-text-muted">
-            {lyricsState.error
-              ? t("common.error_loading", { error: lyricsState.error })
-              : t("common.no_lyrics")}
+            {lyricsState.error ? (
+              <LyricsErrorNotice state={lyricsState} />
+            ) : (
+              t("common.no_lyrics")
+            )}
           </div>
         </div>
       )}

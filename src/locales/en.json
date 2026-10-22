@@ -185,5 +185,33 @@
       "attach_track": "Attach current track info",
       "include_diagnostics": "Attach system diagnostics (Version, Settings, etc.)"
     }
+  },
+  "errors": {
+    "retry": "Try again",
+    "details": "Details: {{error}}",
+    "rate_limited": {
+      "title": "Too many requests",
+      "hint": "The lyrics service (LRCLIB) asked us to slow down. Try again in about {{seconds}} seconds."
+    },
+    "server_busy": {
+      "title": "Lyrics service is busy",
+      "hint": "LRCLIB is overloaded right now. This is on their side, not yours. Try again in a moment."
+    },
+    "service_error": {
+      "title": "Lyrics service returned an error",
+      "hint": "LRCLIB could not handle the request. Try again later, and report it if it keeps happening."
+    },
+    "offline": {
+      "title": "Can't reach the lyrics service",
+      "hint": "Check your internet connection, then try again."
+    },
+    "extension_unavailable": {
+      "title": "Lyrike was updated or reloaded",
+      "hint": "Refresh this page to keep loading lyrics."
+    },
+    "unknown": {
+      "title": "Couldn't load lyrics",
+      "hint": "Something went wrong. Try again, and report it if it keeps happening."
+    }
   }
 }

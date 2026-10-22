@@ -54,6 +54,8 @@ import {
   setBlacklistMock,
   resetLrclibClientState,
   LrclibRateLimitError,
+  LrclibHttpError,
+  classifyLyricsError,
 } from "./background";
 import { LyricsData } from "./content/shared/types";
 
@@ -381,6 +383,56 @@ describe("background helper functions", () => {
       expect(finalIndex.length).toBe(3000);
       expect(finalIndex.find((e: any) => e.id === 1)).toBeUndefined();
       expect(finalIndex.find((e: any) => e.id === 9999)).toBeDefined();
+    });
+  });
+
+  describe("classifyLyricsError", () => {
+    test("rate limit exposes the seconds left", () => {
+      const result = classifyLyricsError(
+        new LrclibRateLimitError(Date.now() + 42_000),
+      );
+      expect(result.code).toBe("rate_limited");
+      expect(result.retryAfterSec).toBeGreaterThanOrEqual(41);
+      expect(result.retryAfterSec).toBeLessThanOrEqual(42);
+    });
+
+    test.each([502, 503, 504])("HTTP %i means the service is busy", (status) => {
+      expect(classifyLyricsError(new LrclibHttpError("x", status)).code).toBe(
+        "server_busy",
+      );
+    });
+
+    test("other HTTP failures are a generic service error", () => {
+      expect(classifyLyricsError(new LrclibHttpError("x", 500)).code).toBe(
+        "service_error",
+      );
+    });
+
+    test("a rejected fetch means the user is offline", () => {
+      expect(classifyLyricsError(new TypeError("Failed to fetch")).code).toBe(
+        "offline",
+      );
+    });
+
+    test("anything else is unknown", () => {
+      expect(classifyLyricsError(new Error("boom")).code).toBe("unknown");
+      expect(classifyLyricsError("boom").code).toBe("unknown");
+    });
+
+    test("searchOnce surfaces a 503 as a classifiable error and does not cache a miss", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        status: 503,
+        ok: false,
+        headers: new Headers(),
+      } as any);
+
+      const error = await searchOnce({ trackName: "Em", artistName: "Binz" }).catch(
+        (e) => e,
+      );
+      expect(error).toBeInstanceOf(LrclibHttpError);
+      expect(classifyLyricsError(error).code).toBe("server_busy");
+      expect(error.message).toBe("LRCLIB error: 503");
+      expect(mockStore["lyrics_miss:lyrics:binz:em:"]).toBeUndefined();
     });
   });
 

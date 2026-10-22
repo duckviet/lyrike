@@ -41,10 +41,24 @@ export interface LyricsData {
   offsetMs?: number;
 }
 
+/** Why a lyrics request failed, so the UI can explain it and offer a fix. */
+export type LyricsErrorCode =
+  | "rate_limited"
+  | "server_busy"
+  | "service_error"
+  | "offline"
+  | "extension_unavailable"
+  | "unknown";
+
 export interface LyricsState {
   loading: boolean;
   data: LyricsData | null;
+  /** Raw technical message (kept for diagnostics, not for display as-is). */
   error: string;
+  errorCode?: LyricsErrorCode;
+  /** Only for `rate_limited`: seconds until requests are allowed again. */
+  retryAfterSec?: number;
+  refetch?: () => void;
 }
 
 export interface LyricWord {

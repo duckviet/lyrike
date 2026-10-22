@@ -1,4 +1,4 @@
-import { LyricsData, Settings } from "./content/shared/types";
+import { LyricsData, LyricsErrorCode, Settings } from "./content/shared/types";
 import { normalizeChannelToArtist } from "./content/utils/trackInfo";
 
 export const SYNCED_LYRICS_BONUS = 100;
@@ -12,7 +12,7 @@ export interface RemoteBlacklistConfig {
 
 const BLACKLIST_URL = "https://raw.githubusercontent.com/duckviet/lyrike/main/blacklist.json";
 const BLACKLIST_CACHE_KEY = "lyrics_blacklist_config";
-const BLACKLIST_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const BLACKLIST_TTL_MS = 1 * 60 * 60 * 1000; // 1 hours
 
 export interface CachedBlacklist {
   config: RemoteBlacklistConfig;
@@ -186,6 +186,42 @@ export function resetLrclibClientState() {
   lrclibBlockedUntil = 0;
 }
 
+/** A non-OK LRCLIB response that is not a rate limit. */
+export class LrclibHttpError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "LrclibHttpError";
+  }
+}
+
+/** Maps a failure from the lyrics pipeline to something the UI can explain. */
+export function classifyLyricsError(error: unknown): {
+  code: LyricsErrorCode;
+  retryAfterSec?: number;
+} {
+  if (error instanceof LrclibRateLimitError) {
+    return {
+      code: "rate_limited",
+      retryAfterSec: Math.max(1, Math.ceil((error.retryAt - Date.now()) / 1000)),
+    };
+  }
+  if (error instanceof LrclibHttpError) {
+    // 502/503/504: LRCLIB itself is overloaded or temporarily down.
+    if (error.status === 502 || error.status === 503 || error.status === 504) {
+      return { code: "server_busy" };
+    }
+    return { code: "service_error" };
+  }
+  // fetch() rejects with a TypeError when there is no network / DNS / TLS.
+  if (error instanceof TypeError) {
+    return { code: "offline" };
+  }
+  return { code: "unknown" };
+}
+
 function lrclibClientHeader(): string {
   const version = chrome.runtime.getManifest?.().version ?? "unknown";
   return `Lyrike v${version} (${LRCLIB_HOMEPAGE})`;
@@ -276,7 +312,10 @@ export async function fetchLyricsById(id: number): Promise<LyricsData | null> {
   }
 
   if (!response.ok) {
-    throw new Error(`LRCLIB get-by-id error: ${response.status}`);
+    throw new LrclibHttpError(
+      `LRCLIB get-by-id error: ${response.status}`,
+      response.status,
+    );
   }
 
   const result: LyricsData = await response.json();
@@ -648,7 +687,7 @@ export async function searchOnce(
   const response = await lrclibFetch(url.toString());
 
   if (!response.ok) {
-    throw new Error(`LRCLIB error: ${response.status}`);
+    throw new LrclibHttpError(`LRCLIB error: ${response.status}`, response.status);
   }
 
   const results: LyricsData[] = await response.json();
@@ -1053,6 +1092,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({
           ok: false,
           error: error instanceof Error ? error.message : "Unknown error",
+          ...classifyLyricsError(error),
         }),
       );
 

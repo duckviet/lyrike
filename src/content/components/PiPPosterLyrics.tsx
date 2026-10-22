@@ -7,6 +7,7 @@ import {
   Settings,
 } from "../shared/types";
 import { CoverPolaroid, VinylRecord } from "./PiPMetaArt";
+import { LyricsErrorNotice } from "./LyricsErrorNotice";
 import { DEFAULT_SETTINGS } from "../shared/settings";
 
 interface PiPPosterLyricsProps {
@@ -180,11 +181,13 @@ export function PiPPosterLyrics({
   const bottomGhosts = useGhostEntries(groupStart, ghostText.bottom);
 
   const hasSynced = syncedLines.length > 0;
+  const showError =
+    !lyricsState.loading && !lyricsState.data && !!lyricsState.error;
   const emptyMessage = lyricsState.loading
     ? t("common.loading_lyrics")
     : !lyricsState.data
       ? lyricsState.error
-        ? t("common.error_loading", { error: lyricsState.error })
+        ? ""
         : t("common.no_lyrics")
       : !hasSynced
         ? t("common.no_usable_lyrics")
@@ -386,7 +389,12 @@ export function PiPPosterLyrics({
               animation: "poster-group-in 0.35s ease both",
             }}
           >
-            {emptyMessage ? (
+            {showError ? (
+              <LyricsErrorNotice
+                state={lyricsState}
+                align={showMeta ? "start" : "center"}
+              />
+            ) : emptyMessage ? (
               <div
                 style={{
                   fontSize: 14,
