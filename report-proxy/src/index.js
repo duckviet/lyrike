@@ -36,9 +36,36 @@ export default {
       });
     }
 
-    const { description, trackName, artistName, albumName, videoUrl, lyricsId, thumbnail, diagnostics } = payload;
+    if (!payload || typeof payload !== "object") {
+      return new Response("Invalid JSON body", { status: 400, headers: corsHeaders });
+    }
 
-    if (!description || typeof description !== "string" || !description.trim()) {
+    if (env.RATE_LIMITER) {
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      if (!(await env.RATE_LIMITER.limit({ key: ip })).success) {
+        return new Response("Too many requests", { status: 429, headers: corsHeaders });
+      }
+    }
+
+    const { diagnostics: rawDiagnostics } = payload;
+    const description = str(payload.description, 2000);
+    const trackName = str(payload.trackName);
+    const artistName = str(payload.artistName);
+    const albumName = str(payload.albumName);
+    const lyricsId = /^\d{1,12}$/.test(String(payload.lyricsId ?? "")) ? String(payload.lyricsId) : "";
+    const reportVideoId = parseVideoId(payload.videoUrl);
+    // Rebuilt from the id, so only a real YouTube watch URL ever reaches Slack.
+    const videoUrl = reportVideoId ? `https://www.youtube.com/watch?v=${reportVideoId}` : "";
+    const thumbnail = /^https:\/\/i\.ytimg\.com\/[\w\-./?=&%]{1,300}$/.test(payload.thumbnail || "")
+      ? payload.thumbnail
+      : "";
+    const diagnostics = {
+      extensionVersion: str(rawDiagnostics?.extensionVersion, 40),
+      browserVersion: str(rawDiagnostics?.browserVersion, 300),
+      timestamp: str(rawDiagnostics?.timestamp, 40),
+    };
+
+    if (!description) {
       return new Response("Missing description", {
         status: 400,
         headers: corsHeaders,
@@ -47,7 +74,6 @@ export default {
 
     const hasTrack = !!(trackName || artistName || videoUrl || lyricsId);
 
-    const reportVideoId = parseVideoId(videoUrl);
     if (hasTrack && reportVideoId && env.SLACK_BOT_TOKEN && env.SLACK_CHANNEL_ID) {
       ctx.waitUntil(
         createReport(env, { trackName, artistName, videoUrl, videoId: reportVideoId, lyricsId, description }).catch(
@@ -84,7 +110,7 @@ export default {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*Description:*\n${description.trim()}`,
+          text: `*Description:*\n${esc(description)}`,
         },
       },
     ];
@@ -96,19 +122,19 @@ export default {
         fields: [
           {
             type: "mrkdwn",
-            text: `*Track:*\n${trackName || "—"}`,
+            text: `*Track:*\n${esc(trackName) || "—"}`,
           },
           {
             type: "mrkdwn",
-            text: `*Artist:*\n${artistName || "—"}`,
+            text: `*Artist:*\n${esc(artistName) || "—"}`,
           },
           {
             type: "mrkdwn",
-            text: `*Album:*\n${albumName || "—"}`,
+            text: `*Album:*\n${esc(albumName) || "—"}`,
           },
           {
             type: "mrkdwn",
-            text: `*Lyrics ID:*\n${lyricsId || "—"}`,
+            text: `*Lyrics ID:*\n${esc(lyricsId) || "—"}`,
           },
           {
             type: "mrkdwn",
@@ -116,7 +142,7 @@ export default {
           },
           {
             type: "mrkdwn",
-            text: `*Ext Version:*\n${diagnostics?.extensionVersion || "—"}`,
+            text: `*Ext Version:*\n${esc(diagnostics.extensionVersion) || "—"}`,
           },
         ],
         ...(thumbnail
@@ -136,7 +162,7 @@ export default {
       elements: [
         {
           type: "mrkdwn",
-          text: `*Ext Version:* ${diagnostics?.extensionVersion || "—"} | *Browser:* ${diagnostics?.browserVersion || "Unknown"} | *Timestamp:* ${diagnostics?.timestamp || "—"}`,
+          text: `*Ext Version:* ${esc(diagnostics.extensionVersion) || "—"} | *Browser:* ${esc(diagnostics.browserVersion) || "Unknown"} | *Timestamp:* ${esc(diagnostics.timestamp) || "—"}`,
         },
       ],
     });
@@ -152,9 +178,9 @@ export default {
           albumName,
           videoUrl,
           lyricsId,
-          extensionVersion: diagnostics?.extensionVersion || "—",
-          browserVersion: diagnostics?.browserVersion || "Unknown",
-          timestamp: diagnostics?.timestamp || "—",
+          extensionVersion: diagnostics.extensionVersion || "—",
+          browserVersion: diagnostics.browserVersion || "Unknown",
+          timestamp: diagnostics.timestamp || "—",
         }
       : slackPayload;
 
@@ -197,9 +223,17 @@ export default {
 
 const VIDEO_ID_RE = /^[\w-]{11}$/;
 
+const YOUTUBE_HOSTS = new Set(["www.youtube.com", "youtube.com", "music.youtube.com"]);
+
+const str = (v, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+// Slack mrkdwn: escaping these stops <!channel>, <@user> and fake <url|text> links.
+const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 function parseVideoId(videoUrl) {
   try {
-    const id = new URL(videoUrl).searchParams.get("v");
+    const url = new URL(videoUrl);
+    if (!YOUTUBE_HOSTS.has(url.hostname)) return null;
+    const id = url.searchParams.get("v");
     return id && VIDEO_ID_RE.test(id) ? id : null;
   } catch {
     return null;
@@ -271,13 +305,13 @@ async function tickListItem(env, itemId) {
 function postResolveMessage(env, { trackName, artistName, videoUrl, videoId, lyricsId, description, itemId }) {
   return slack(env, "chat.postMessage", {
     channel: env.SLACK_CHANNEL_ID,
-    text: `Missing lyric: ${trackName || videoId}`,
+    text: `Missing lyric: ${esc(trackName) || videoId}`,
     blocks: [
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*${trackName || "—"}* – ${artistName || "—"}\n${videoUrl}\nlyricsId: \`${lyricsId || "—"}\`\n${String(description).trim()}`,
+          text: `*${esc(trackName) || "—"}* – ${esc(artistName) || "—"}\n${videoUrl}\nlyricsId: \`${esc(lyricsId) || "—"}\`\n${esc(description)}`,
         },
       },
       {
@@ -323,6 +357,15 @@ async function handleInteract(request, env, ctx) {
   }
 
   const payload = JSON.parse(new URLSearchParams(rawBody).get("payload") || "{}");
+
+  // Resolving commits to the public blacklist, so only listed Slack users may do it.
+  const allowed = (env.RESOLVER_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
+  if (!allowed.includes(payload.user?.id)) {
+    console.warn("resolve denied for", payload.user?.id);
+    return payload.type === "view_submission"
+      ? json({ response_action: "errors", errors: { new_id: "You are not allowed to resolve reports" } })
+      : new Response("");
+  }
 
   if (payload.type === "block_actions") {
     const action = payload.actions?.[0];
@@ -400,7 +443,7 @@ function buildResolveModal({ videoId, lyricsId, itemId, channel, ts }) {
     blocks: [
       {
         type: "section",
-        text: { type: "mrkdwn", text: `Video: \`${videoId}\`\nOld lyricsId: \`${lyricsId || "—"}\`` },
+        text: { type: "mrkdwn", text: `Video: \`${videoId}\`\nOld lyricsId: \`${esc(lyricsId) || "—"}\`` },
       },
       {
         type: "input",

@@ -350,13 +350,14 @@ export interface CachedLyricsEntry {
 
 export interface CacheIndexEntry {
   id: number;
-  sizeBytes: number; // estimated via JSON.stringify
-  lastAccessedAt: number; // Unix ms
+  lastAccessedAt: number; // Unix ms — when last written
 }
 
 const LYRICS_PAYLOAD_PREFIX = "lyrics_payload:";
 const CACHE_INDEX_KEY = "lyrics_cache_index";
 const MAX_CACHED_TRACKS = 3000;
+
+let cacheWriteQueue: Promise<void> = Promise.resolve();
 
 async function getCacheIndex(): Promise<CacheIndexEntry[]> {
   const result = await chrome.storage.local.get(CACHE_INDEX_KEY);
@@ -396,21 +397,9 @@ async function pruneCacheIfNeeded(
 }
 
 /**
- * Updates lastAccessedAt for an existing index entry (best-effort, not awaited
- * in the hot path so it never blocks the response to the UI).
- */
-async function touchCacheEntry(id: number): Promise<void> {
-  const index = await getCacheIndex();
-  const entry = index.find((e) => e.id === id);
-  if (entry) {
-    entry.lastAccessedAt = Date.now();
-    await setCacheIndex(index);
-  }
-}
-
-/**
  * Reads a cached full payload by lrclib id.
- * Fires a background LRU-touch (non-blocking) so hot tracks stay alive.
+ * Eviction is oldest-written-first: reads do not touch the index, so they
+ * never race with the index writes in setCachedPayload.
  */
 async function getCachedPayload(
   id: number,
@@ -419,11 +408,6 @@ async function getCachedPayload(
   const result = await chrome.storage.local.get(key);
   const entry = result[key] as CachedLyricsEntry | undefined;
   if (!entry) return null;
-
-  // Best-effort LRU update — not awaited so it never slows the caller.
-  touchCacheEntry(id).catch((e) =>
-    console.warn("[Lyrics cache] touch failed:", e),
-  );
 
   return entry;
 }
@@ -434,10 +418,13 @@ async function getCachedPayload(
  * Errors are caught and logged — a cache write failure must never break
  * the lyrics fetch flow.
  */
-async function setCachedPayload(
-  id: number,
-  data: LyricsData,
-): Promise<void> {
+function setCachedPayload(id: number, data: LyricsData): Promise<void> {
+  // The index is read-modify-write: serialize writers or entries get lost.
+  cacheWriteQueue = cacheWriteQueue.then(() => writeCachedPayload(id, data));
+  return cacheWriteQueue;
+}
+
+async function writeCachedPayload(id: number, data: LyricsData): Promise<void> {
   try {
     const entry: CachedLyricsEntry = {
       id,
@@ -452,15 +439,12 @@ async function setCachedPayload(
     };
 
     const key = `${LYRICS_PAYLOAD_PREFIX}${id}`;
-    const sizeBytes = new Blob([JSON.stringify(entry)]).size;
-
     await chrome.storage.local.set({ [key]: entry });
 
     const index = await getCacheIndex();
     const existingIdx = index.findIndex((e) => e.id === id);
     const newEntry: CacheIndexEntry = {
       id,
-      sizeBytes,
       lastAccessedAt: Date.now(),
     };
 
@@ -507,8 +491,18 @@ async function fetchLyricsByIdWithCache(
   return fresh;
 }
 
+/** Cache values are a number (id) or "id#offsetMs". Anything else is invalid. */
+function parseCachedValue(
+  value: unknown,
+): { id: number; offsetMs: number } | null {
+  if (typeof value === "number") return { id: value, offsetMs: 0 };
+  if (typeof value !== "string") return null;
+  const [id, offset] = value.split("#");
+  return { id: parseInt(id, 10), offsetMs: parseInt(offset, 10) || 0 };
+}
+
 /**
- * Resolves a cached value from chrome storage. Handles migrations from legacy structures.
+ * Resolves a cached value from chrome storage.
  * Pass videoId to resolve the video-specific offset when available.
  */
 export async function resolveCachedEntry(
@@ -518,86 +512,29 @@ export async function resolveCachedEntry(
 ): Promise<{ id: number; offsetMs: number } | null> {
   if (cachedValue === undefined) return null;
 
-  // New format: cache only LRCLIB id (number) or string format "id#offset"
-  if (typeof cachedValue === "number" || typeof cachedValue === "string") {
-    let id: number;
-    let offsetMs: number = 0;
+  const parsed = parseCachedValue(cachedValue);
+  if (!parsed || !Number.isFinite(parsed.id)) {
+    // Invalid cached structure, remove it
+    await chrome.storage.local.remove(cacheKey);
+    return null;
+  }
+  const { id } = parsed;
+  let { offsetMs } = parsed;
 
-    if (typeof cachedValue === "string") {
-      const parts = cachedValue.split("#");
-      id = parseInt(parts[0], 10);
-      if (parts[1]) {
-        offsetMs = parseInt(parts[1], 10) || 0;
-      }
-    } else {
-      id = cachedValue;
-    }
-
-    if (!Number.isFinite(id)) return null;
-
-    // Check remote blacklist
-    const blacklist = await getOrFetchBlacklist();
-    if (blacklist.blacklistedLyricsIds?.includes(id)) {
-      console.log(`[Lyrics] Cache hit for blacklisted ID ${id}, clearing cache.`);
-      await chrome.storage.local.remove(cacheKey);
-      await chrome.storage.local.remove(`${LYRICS_PAYLOAD_PREFIX}${id}`);
-      return null;
-    }
-
-    // Prefer stored offset (video-specific → global fallback)
-    if (!offsetMs) {
-      offsetMs = await getLyricsOffset(id, videoId);
-    }
-
-    return { id, offsetMs };
+  // Check remote blacklist
+  const blacklist = await getOrFetchBlacklist();
+  if (blacklist.blacklistedLyricsIds?.includes(id)) {
+    console.log(`[Lyrics] Cache hit for blacklisted ID ${id}, clearing cache.`);
+    await chrome.storage.local.remove([cacheKey, `${LYRICS_PAYLOAD_PREFIX}${id}`]);
+    return null;
   }
 
-  // Backward-compatible migration: old cache stored full lyrics payload.
-  if (typeof cachedValue === "object" && cachedValue !== null) {
-    const legacy = cachedValue as Record<string, unknown>;
-    const legacyId = legacy.id;
-
-    if (typeof legacyId === "number" && Number.isFinite(legacyId)) {
-      // Check remote blacklist for legacy cache
-      const blacklist = await getOrFetchBlacklist();
-      if (blacklist.blacklistedLyricsIds?.includes(legacyId)) {
-        console.log(`[Lyrics] Legacy cache hit for blacklisted ID ${legacyId}, clearing cache.`);
-        await chrome.storage.local.remove(cacheKey);
-        await chrome.storage.local.remove(`${LYRICS_PAYLOAD_PREFIX}${legacyId}`);
-        return null;
-      }
-
-      const legacyOffset =
-        typeof legacy.offsetMs === "number" && Number.isFinite(legacy.offsetMs)
-          ? legacy.offsetMs
-          : await getLyricsOffset(legacyId, videoId);
-
-      await chrome.storage.local.set({
-        [cacheKey]: `${legacyId}#${legacyOffset}`,
-      });
-
-      const globalOffsetKey = lyricsOffsetKey(legacyId);
-      const existing = await chrome.storage.local.get(globalOffsetKey);
-
-      if (typeof existing[globalOffsetKey] !== "number" || !Number.isFinite(existing[globalOffsetKey])) {
-        await chrome.storage.local.set({
-          [globalOffsetKey]: legacyOffset,
-        });
-      }
-
-      const legacyLyrics = cachedValue as unknown as LyricsData;
-      void setCachedPayload(legacyId, legacyLyrics);
-
-      return {
-        id: legacyId,
-        offsetMs: legacyOffset,
-      };
-    }
+  // Prefer stored offset (video-specific → global fallback)
+  if (!offsetMs) {
+    offsetMs = await getLyricsOffset(id, videoId);
   }
 
-  // Invalid cached structure, remove it
-  await chrome.storage.local.remove(cacheKey);
-  return null;
+  return { id, offsetMs };
 }
 
 /** Canonical cache key for a given search candidate. */
@@ -646,6 +583,7 @@ async function getCachedLyrics(
 export async function searchOnce(
   candidate: SearchCandidate,
   prioritizeKaraoke: boolean = false,
+  videoId?: string,
 ): Promise<LyricsData | null> {
   const { trackName, artistName, albumName } = candidate;
   if (!trackName) return null;
@@ -655,7 +593,7 @@ export async function searchOnce(
   const cached = await chrome.storage.local.get(cacheKey);
   const cachedValue = cached[cacheKey];
 
-  const resolved = await resolveCachedEntry(cacheKey, cachedValue);
+  const resolved = await resolveCachedEntry(cacheKey, cachedValue, videoId);
   if (resolved) {
     const fromId = await fetchLyricsByIdWithCache(resolved.id);
     if (fromId) {
@@ -805,7 +743,7 @@ async function findFirstCachedLyrics(
 async function searchAndCacheKaraoke(
   payload: LyricsPayload,
 ): Promise<LyricsData | null> {
-  const { trackName, artistName, albumName } = payload;
+  const { trackName, artistName, albumName, videoId } = payload;
   if (!trackName) return null;
 
   const alreadyKaraoke = normalizeText(trackName).includes("karaoke");
@@ -828,7 +766,7 @@ async function searchAndCacheKaraoke(
     // Always score with prioritizeKaraoke=true so karaoke results rank highest.
     // searchOnce() auto-caches the result under lyricsCacheKey — reusable
     // across all videos with the same track/artist/album metadata.
-    const result = await searchOnce(candidate, true);
+    const result = await searchOnce(candidate, true, videoId);
 
     // Guard: only accept results that are verifiably karaoke
     if (!result || !isKaraokeResult(result)) continue;
@@ -955,10 +893,8 @@ export async function findLyrics(
     if (karaokeResult) return karaokeResult;
   }
 
-  console.log(payload);
   for (const candidate of normalCandidates) {
-    const result = await searchOnce(candidate, false);
-    console.log(candidate, result);
+    const result = await searchOnce(candidate, false, videoId);
     if (result) return result;
   }
 
@@ -1064,12 +1000,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const cached = await chrome.storage.local.get(cacheKey);
           const cachedVal = cached[cacheKey];
           if (cachedVal !== undefined) {
-            let id: number | null = null;
-            if (typeof cachedVal === "number") {
-              id = cachedVal;
-            } else if (typeof cachedVal === "string") {
-              id = parseInt(cachedVal.split("#")[0], 10);
-            }
+            const id = parseCachedValue(cachedVal)?.id;
             if (id && Number.isFinite(id)) {
               await chrome.storage.local.remove(`${LYRICS_PAYLOAD_PREFIX}${id}`);
             }

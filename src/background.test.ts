@@ -129,27 +129,6 @@ describe("background helper functions", () => {
       expect(result).toEqual({ id: 12345, offsetMs: 500 });
     });
 
-    test("should migrate legacy object cache to new ID#offset string format", async () => {
-      const legacyObject = { id: 9876, trackName: "Em", plainLyrics: "..." };
-      const result = await resolveCachedEntry("lyrics:binz:em", legacyObject);
-
-      expect(result).toEqual({ id: 9876, offsetMs: 0 });
-      // Should have saved the migration in chrome.storage
-      expect(mockStore["lyrics:binz:em"]).toBe("9876#0");
-      expect(mockStore[lyricsOffsetKey(9876)]).toBe(0);
-      expect(mockStore["lyrics_payload:9876"]).toBeDefined();
-    });
-
-    test("should migrate legacy object cache preserving non-zero offsetMs", async () => {
-      const legacyObject = { id: 9876, offsetMs: 850, trackName: "Em", plainLyrics: "..." };
-      const result = await resolveCachedEntry("lyrics:binz:em", legacyObject);
-
-      expect(result).toEqual({ id: 9876, offsetMs: 850 });
-      expect(mockStore["lyrics:binz:em"]).toBe("9876#850");
-      expect(mockStore[lyricsOffsetKey(9876)]).toBe(850);
-      expect(mockStore["lyrics_payload:9876"]).toBeDefined();
-    });
-
     test("should resolve video-specific offset when videoId is provided", async () => {
       // Mock video-specific offset
       mockStore["lyrics_offset:vid123:9876"] = 1250;
@@ -345,7 +324,6 @@ describe("background helper functions", () => {
       for (let i = 1; i <= 3000; i++) {
         mockIndex.push({
           id: i,
-          sizeBytes: 100,
           lastAccessedAt: 1000 + i, // entry 1 is oldest (1001)
         });
         mockStore[`lyrics_payload:${i}`] = { id: i, plainLyrics: "test" };
@@ -383,6 +361,38 @@ describe("background helper functions", () => {
       expect(finalIndex.length).toBe(3000);
       expect(finalIndex.find((e: any) => e.id === 1)).toBeUndefined();
       expect(finalIndex.find((e: any) => e.id === 9999)).toBeDefined();
+    });
+  });
+
+  describe("cache index and offsets", () => {
+    test("concurrent payload writes keep every index entry", async () => {
+      const fresh = (id: number) => ({
+        id,
+        trackName: `T${id}`,
+        artistName: "A",
+        plainLyrics: "x",
+      });
+      vi.spyOn(global, "fetch").mockImplementation((async (url: string) => {
+        const name = new URL(String(url)).searchParams.get("track_name");
+        const id = Number(name!.slice(1));
+        return { status: 200, ok: true, json: async () => [fresh(id)] };
+      }) as any);
+      await Promise.all(
+        [1, 2, 3, 4, 5].map((id) => searchOnce({ trackName: `T${id}`, artistName: "A" })),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const ids = mockStore["lyrics_cache_index"].map((e: any) => e.id).sort();
+      expect(ids).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    test("searchOnce uses the video-specific offset on a cache hit", async () => {
+      mockStore["lyrics:binz:em:"] = "77#0";
+      mockStore["lyrics_payload:77"] = { id: 77, plainLyrics: "x", syncedLyrics: null };
+      mockStore["lyrics_offset:vid1:77"] = 900;
+
+      const result = await searchOnce({ trackName: "Em", artistName: "Binz" }, false, "vid1");
+      expect(result?.offsetMs).toBe(900);
     });
   });
 

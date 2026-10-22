@@ -33,7 +33,6 @@ export const fetchVideoDetails = async (
   }
 
   const data = await response.json();
-  console.log(data)
 
   if (!data.items?.[0]) {
     throw new Error("Video not found");

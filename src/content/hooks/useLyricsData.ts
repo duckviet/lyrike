@@ -52,7 +52,6 @@ export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch:
       return;
     }
 
-    console.log(track);
     const queryTrackName = (track.trackName || track.title || "").trim();
     if (!queryTrackName) {
       return;
