@@ -27,11 +27,13 @@ interface LyricsPiPPortalProps {
     isPaused: boolean;
     volume: number;
     offset: number;
+    karaokeMode?: boolean;
     togglePlay: () => void;
     nextTrack: () => void;
     prevTrack: () => void;
     setVolume: (v: number) => void;
     adjustOffset: (d: number) => void;
+    toggleKaraokeMode?: () => void;
   };
 }
 

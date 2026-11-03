@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { CloseIcon, PiPIcon } from "../icons";
+import { CloseIcon, KaraokeMicIcon, PiPIcon } from "../icons";
 
 function ExpandIcon(): React.JSX.Element {
   return (
@@ -41,8 +41,10 @@ interface WidgetHeaderProps {
   title: string;
   artist: string;
   minimized: boolean;
+  karaokeMode?: boolean;
   onStartDrag: (event: React.MouseEvent<HTMLElement>) => void;
   onOpenPiP: () => void;
+  onToggleKaraoke?: () => void;
   onToggleMinimized: () => void;
   onHide: () => void;
   onRefetch?: () => void;
@@ -52,8 +54,10 @@ export function WidgetHeader({
   title,
   artist,
   minimized,
+  karaokeMode = false,
   onStartDrag,
   onOpenPiP,
+  onToggleKaraoke,
   onToggleMinimized,
   onHide,
   // onRefetch,
@@ -86,6 +90,26 @@ export function WidgetHeader({
             <RefreshIcon />
           </button>
         )} */}
+
+        {onToggleKaraoke && (
+          <button
+            type="button"
+            className={`flex items-center justify-center w-10 h-10 border-none rounded-md cursor-pointer transition-all duration-150 active:scale-[0.94] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:stroke-[2] ${karaokeMode
+                ? "bg-white/15 text-emerald-400 hover:bg-white/20"
+                : "bg-transparent text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+              }`}
+            onClick={onToggleKaraoke}
+            title={
+              karaokeMode ? t("header.karaoke_on") : t("header.karaoke_off")
+            }
+            aria-label={
+              karaokeMode ? t("header.karaoke_on") : t("header.karaoke_off")
+            }
+            aria-pressed={karaokeMode}
+          >
+            <KaraokeMicIcon />
+          </button>
+        )}
 
         <button
           type="button"

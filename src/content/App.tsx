@@ -33,11 +33,13 @@ export default function App(): React.JSX.Element | null {
     isPaused,
     volume,
     offset,
+    karaokeMode,
     togglePlay,
     nextTrack,
     prevTrack,
     setVolume,
     adjustOffset,
+    toggleKaraokeMode,
   } = usePlayerControls();
 
   const { settings, updateSettings, resetAllSettings } = useLyricsSettings();
@@ -152,6 +154,8 @@ export default function App(): React.JSX.Element | null {
           settings={settings}
           onStartDrag={startDrag}
           onOpenPiP={openLyricsPiP}
+          karaokeMode={karaokeMode}
+          onToggleKaraoke={toggleKaraokeMode}
           onToggleMinimized={() => setMinimized((value) => !value)}
           onHide={() =>
             settings && updateSettings({ ...settings, showFloatingWidget: false })
@@ -189,11 +193,13 @@ export default function App(): React.JSX.Element | null {
           isPaused,
           volume,
           offset,
+          karaokeMode,
           togglePlay,
           nextTrack,
           prevTrack,
           setVolume,
           adjustOffset,
+          toggleKaraokeMode,
         }}
       />
     </>
