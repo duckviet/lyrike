@@ -5,6 +5,7 @@ export interface TrackMeta {
   channelName: string;
   albumName?: string;
   thumbnail?: string;
+  duration?: number;
 }
 
 export interface PlatformAdapter {

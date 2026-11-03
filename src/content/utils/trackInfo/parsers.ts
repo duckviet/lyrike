@@ -62,7 +62,7 @@ export function parsePipeSeparatedTitle(
   const trackParts = meaningful.filter((_, i) => i !== bestArtistIdx);
   const trackRaw = trackParts[0] || "";
 
-  const dashSep = /\s[-–—]\s/;
+  const dashSep = /\s[-–—_]\s/;
   if (dashSep.test(trackRaw)) {
     const nested = parseDashSeparatedTitle(trackRaw, channelName);
     if (nested) return nested;
@@ -79,7 +79,7 @@ export function parseDashSeparatedTitle(
   channelName: string,
 ): { artistName: string; trackName: string } | null {
   const cleaned = removeBracketedNoise(title);
-  const separators = [" - ", " – ", " — "];
+  const separators = [" - ", " – ", " — ", " _ "];
 
   for (const sep of separators) {
     if (!cleaned.includes(sep)) continue;

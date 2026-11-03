@@ -111,6 +111,19 @@ describe("background helper functions", () => {
       const scoreWithoutPrioritize = scoreResult(karaokeResult, "Em", "Binz", "Gap Lai", false);
       expect(scoreWithPrioritize).toBe(scoreWithoutPrioritize + 150);
     });
+
+    test("should prefer results matching video duration and penalize large duration mismatches", () => {
+      const mvVersion = { ...dummyResult, duration: 212 };
+      const audioVersion = { ...dummyResult, duration: 197 };
+      const shortVersion = { ...dummyResult, duration: 90 };
+
+      const mvScore = scoreResult(mvVersion, "Em", "Binz", "Gap Lai", false, 212);
+      const audioScore = scoreResult(audioVersion, "Em", "Binz", "Gap Lai", false, 212);
+      const shortScore = scoreResult(shortVersion, "Em", "Binz", "Gap Lai", false, 212);
+
+      expect(mvScore).toBeGreaterThan(audioScore);
+      expect(audioScore).toBeGreaterThan(shortScore);
+    });
   });
 
   describe("resolveCachedEntry", () => {
@@ -268,6 +281,38 @@ describe("background helper functions", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
+    test("findLyrics: should try /api/get with duration first when duration is provided", async () => {
+      const exactResult: LyricsData = {
+        id: 9694669,
+        trackName: "Lift Me Up",
+        artistName: "Rihanna",
+        duration: 212,
+        plainLyrics: "Lift me up...",
+        syncedLyrics: "[00:29.65]Lift me up",
+      };
+
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => exactResult,
+      } as any);
+
+      const result = await findLyrics({
+        trackName: "Lift Me Up",
+        artistName: "Rihanna",
+        channelName: "RihannaVEVO",
+        originalTitle: "Rihanna - Lift Me Up (From Black Panther: Wakanda Forever)",
+        duration: 212,
+      });
+
+      expect(result).toEqual({ ...exactResult, offsetMs: 0 });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "https://lrclib.net/api/get?track_name=Lift+Me+Up&artist_name=Rihanna&duration=212",
+        expect.anything(),
+      );
+    });
+
     test("lrclibFetch: should identify the client via Lrclib-Client header", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
         status: 200,
@@ -285,16 +330,21 @@ describe("background helper functions", () => {
       );
     });
 
-    test("lrclibFetch: should honor 429 Retry-After and stop sending requests", async () => {
+    test("lrclibFetch: should honor 429 Retry-After with 0-30% jitter and stop sending requests", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
         status: 429,
         ok: false,
         headers: new Headers({ "Retry-After": "120" }),
       } as any);
 
-      await expect(
-        searchOnce({ trackName: "Em", artistName: "Binz" }),
-      ).rejects.toBeInstanceOf(LrclibRateLimitError);
+      const before = Date.now();
+      const err = await searchOnce({ trackName: "Em", artistName: "Binz" }).catch(
+        (e) => e,
+      );
+      expect(err).toBeInstanceOf(LrclibRateLimitError);
+      const waitMs = (err as LrclibRateLimitError).retryAt - before;
+      expect(waitMs).toBeGreaterThanOrEqual(120_000);
+      expect(waitMs).toBeLessThanOrEqual(156_500);
 
       // A second call within the window must not hit the network.
       await expect(
@@ -433,7 +483,7 @@ describe("background helper functions", () => {
       vi.spyOn(global, "fetch").mockResolvedValue({
         status: 503,
         ok: false,
-        headers: new Headers(),
+        headers: new Headers({ "Retry-After": "0" }),
       } as any);
 
       const error = await searchOnce({ trackName: "Em", artistName: "Binz" }).catch(
@@ -527,6 +577,74 @@ describe("background helper functions", () => {
       const result = await findLyrics(payload);
       expect(result?.id).toBe(888);
       expect(result?.trackName).toBe("Overridden Track");
+    });
+
+    test("findLyrics: should retry transient 503 on video override and succeed despite existing lyrics_miss", async () => {
+      mockStore["lyrics_miss:lyrics:amee:ex s hate me part 2:"] = Date.now();
+      let getAttempts = 0;
+
+      vi.spyOn(global, "fetch").mockImplementation(async (url: any) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("api/get/888")) {
+          getAttempts++;
+          if (getAttempts === 1) {
+            return {
+              status: 503,
+              ok: false,
+              headers: new Headers({ "Retry-After": "0" }),
+            } as any;
+          }
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              id: 888,
+              trackName: "ex's hate me, Pt.2",
+              artistName: "AMEE",
+              plainLyrics: "All my ex's hate me",
+            }),
+          } as any;
+        }
+        return { status: 404, ok: false } as any;
+      });
+
+      const result = await findLyrics({
+        trackName: "Ex's Hate Me (Part 2)",
+        artistName: "AMEE",
+        channelName: "ST.319 Entertainment",
+        originalTitle: "AMEE x B RAY - Ex's Hate Me (Part 2)",
+        videoId: "vid_override_123",
+      });
+
+      expect(getAttempts).toBe(2);
+      expect(result?.id).toBe(888);
+      expect(result?.trackName).toBe("ex's hate me, Pt.2");
+    });
+
+    test("findLyrics: should surface LrclibHttpError on persistent 503 for video override instead of falling back to lyrics_miss", async () => {
+      mockStore["lyrics_miss:lyrics:amee:ex s hate me part 2:"] = Date.now();
+
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        status: 503,
+        ok: false,
+        headers: new Headers({ "Retry-After": "0" }),
+      } as any);
+
+      const error = await findLyrics({
+        trackName: "Ex's Hate Me (Part 2)",
+        artistName: "AMEE",
+        channelName: "ST.319 Entertainment",
+        originalTitle: "AMEE x B RAY - Ex's Hate Me (Part 2)",
+        videoId: "vid_override_123",
+      }).catch((e) => e);
+
+      expect(error).toBeInstanceOf(LrclibHttpError);
+      expect(classifyLyricsError(error).code).toBe("server_busy");
+      // 1 initial attempt + 2 retries on api/get/888; never falls through to api/search
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      for (const call of fetchSpy.mock.calls) {
+        expect(String(call[0])).toContain("api/get/888");
+      }
     });
   });
 });

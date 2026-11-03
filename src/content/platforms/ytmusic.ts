@@ -2,6 +2,7 @@ import { normalizeChannelToArtist } from "../utils/trackInfo";
 import {
   captureVideoStreamFromElement,
   getMainVideoElement,
+  getMediaDurationSec,
   getVideoThumbnailUrl,
   normalizeVolume,
   queryText,
@@ -57,6 +58,7 @@ function getFallbackTrackMeta(trackId: string): TrackMeta {
     artistName: normalizeChannelToArtist(artistName),
     albumName: albumName || undefined,
     thumbnail: getVideoThumbnailUrl(trackId),
+    duration: getMediaDurationSec(),
   };
 }
 

@@ -4,6 +4,9 @@ import { normalizeChannelToArtist } from "./content/utils/trackInfo";
 export const SYNCED_LYRICS_BONUS = 100;
 export const EXACT_MATCH_BONUS = 10;
 export const PARTIAL_MATCH_BONUS = 4;
+export const DURATION_EXACT_BONUS = 15;
+export const DURATION_CLOSE_BONUS = 8;
+export const DURATION_MISMATCH_PENALTY = -15;
 
 export interface RemoteBlacklistConfig {
   blacklistedLyricsIds?: number[];
@@ -35,8 +38,8 @@ export async function getOrFetchBlacklist(): Promise<RemoteBlacklistConfig> {
       return entry.config;
     }
 
-    // Fetch fresh blacklist
-    const response = await fetch(BLACKLIST_URL);
+    // Fetch fresh blacklist (bypass browser HTTP cache so new commits apply promptly)
+    const response = await fetch(BLACKLIST_URL, { cache: "no-cache" });
     if (!response.ok) {
       throw new Error(`Failed to fetch blacklist: ${response.status}`);
     }
@@ -118,6 +121,7 @@ export function scoreResult(
   artistName: string,
   albumName?: string,
   prioritizeKaraoke: boolean = false,
+  duration?: number,
 ): number {
   const syncedLyrics = result.syncedLyrics;
   const rt = normalizeText(result.trackName || "");
@@ -136,6 +140,18 @@ export function scoreResult(
   if (t && (rt.includes(t) || t.includes(rt))) score += PARTIAL_MATCH_BONUS;
   if (a && (ra.includes(a) || a.includes(ra))) score += PARTIAL_MATCH_BONUS;
   if (b && (rb.includes(b) || b.includes(rb))) score += PARTIAL_MATCH_BONUS;
+
+  if (
+    typeof duration === "number" &&
+    duration > 0 &&
+    typeof result.duration === "number" &&
+    result.duration > 0
+  ) {
+    const diff = Math.abs(result.duration - duration);
+    if (diff <= 2) score += DURATION_EXACT_BONUS;
+    else if (diff <= 5) score += DURATION_CLOSE_BONUS;
+    else if (diff > 15) score += DURATION_MISMATCH_PENALTY;
+  }
 
   if (prioritizeKaraoke && rt.includes("karaoke")) {
     score += 150;
@@ -163,6 +179,9 @@ export interface SearchCandidate {
 
 const LRCLIB_MIN_INTERVAL_MS = 300;
 const LRCLIB_DEFAULT_RETRY_AFTER_MS = 60 * 1000;
+const LRCLIB_MAX_503_RETRIES = 2;
+const LRCLIB_503_RETRY_FALLBACK_MS = 1000;
+const LRCLIB_RETRY_JITTER_RATIO = 0.3;
 const LRCLIB_BLOCKED_UNTIL_KEY = "lrclib_blocked_until";
 const LRCLIB_HOMEPAGE = "https://chromewebstore.google.com/detail/jkddkopefokablebabnohoggiadolgkm?utm_source=item-share-cb";
 // Public, self-asserted application ID (not a credential), registered at
@@ -227,16 +246,28 @@ function lrclibClientHeader(): string {
   return `Lyrike v${version} (${LRCLIB_HOMEPAGE})`;
 }
 
-/** Parses Retry-After (delta-seconds or HTTP date) into milliseconds. */
-function parseRetryAfterMs(value: string | null | undefined): number {
+/**
+ * Parses Retry-After (delta-seconds or HTTP date) into milliseconds and adds
+ * 0–30% random jitter per LRCLIB spec so throttled clients do not retry in a
+ * synchronized wave.
+ */
+function parseRetryAfterMs(
+  value: string | null | undefined,
+  fallbackMs: number = LRCLIB_DEFAULT_RETRY_AFTER_MS,
+): number {
+  let baseMs = fallbackMs;
   if (value) {
     const seconds = Number(value);
-    if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
-
-    const date = Date.parse(value);
-    if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      baseMs = seconds * 1000;
+    } else {
+      const date = Date.parse(value);
+      if (!Number.isNaN(date)) {
+        baseMs = Math.max(0, date - Date.now());
+      }
+    }
   }
-  return LRCLIB_DEFAULT_RETRY_AFTER_MS;
+  return Math.round(baseMs * (1 + Math.random() * LRCLIB_RETRY_JITTER_RATIO));
 }
 
 async function getLrclibBlockedUntil(): Promise<number> {
@@ -279,21 +310,34 @@ export function lrclibFetch(url: string): Promise<Response> {
     }
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          "Lrclib-Client": lrclibClientHeader(),
-          "Lrclib-App-Id": LRCLIB_APP_ID,
-        },
-      });
+      for (let attempt = 0; ; attempt++) {
+        const response = await fetch(url, {
+          headers: {
+            "Lrclib-Client": lrclibClientHeader(),
+            "Lrclib-App-Id": LRCLIB_APP_ID,
+          },
+        });
 
-      if (response.status === 429) {
-        const until =
-          Date.now() + parseRetryAfterMs(response.headers?.get("Retry-After"));
-        await setLrclibBlockedUntil(until);
-        throw new LrclibRateLimitError(until);
+        if (response.status === 429) {
+          const until =
+            Date.now() + parseRetryAfterMs(response.headers?.get("Retry-After"));
+          await setLrclibBlockedUntil(until);
+          throw new LrclibRateLimitError(until);
+        }
+
+        if (response.status === 503 && attempt < LRCLIB_MAX_503_RETRIES) {
+          const retryWaitMs = parseRetryAfterMs(
+            response.headers?.get("Retry-After"),
+            LRCLIB_503_RETRY_FALLBACK_MS,
+          );
+          if (retryWaitMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, retryWaitMs));
+          }
+          continue;
+        }
+
+        return response;
       }
-
-      return response;
     } finally {
       lrclibLastRequestAt = Date.now();
     }
@@ -580,10 +624,73 @@ async function getCachedLyrics(
   return { ...lyrics, offsetMs: resolved.offsetMs };
 }
 
+export async function fetchLyricsBySignature(
+  trackName: string,
+  artistName: string,
+  duration: number,
+  albumName?: string,
+  videoId?: string,
+): Promise<LyricsData | null> {
+  if (!trackName || !artistName || !(duration >= 1 && duration <= 3600)) {
+    return null;
+  }
+
+  const candidate: SearchCandidate = {
+    trackName,
+    artistName,
+    albumName: "",
+  };
+  const missKey = lyricsMissKey(candidate);
+  const missedAt = (await chrome.storage.local.get(missKey))[missKey];
+  if (
+    typeof missedAt === "number" &&
+    Date.now() - missedAt < LYRICS_MISS_TTL_MS
+  ) {
+    return null;
+  }
+
+  const url = new URL("https://lrclib.net/api/get");
+  url.searchParams.set("track_name", trackName);
+  url.searchParams.set("artist_name", artistName);
+  url.searchParams.set("duration", String(Math.round(duration)));
+
+  const response = await lrclibFetch(url.toString());
+  if (response.status === 404 || response.status === 400) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new LrclibHttpError(
+      `LRCLIB get error: ${response.status}`,
+      response.status,
+    );
+  }
+
+  const result: LyricsData = await response.json();
+  if (typeof result?.id !== "number") return null;
+
+  const blacklist = await getOrFetchBlacklist();
+  if (blacklist.blacklistedLyricsIds?.includes(result.id)) {
+    return null;
+  }
+
+  if (!result.syncedLyrics && !result.plainLyrics && !result.instrumental) {
+    return null;
+  }
+
+  const cacheKey = lyricsCacheKey({ trackName, artistName, albumName });
+  await chrome.storage.local.set({ [cacheKey]: `${result.id}#0` });
+  await initializeLyricsOffset(result.id);
+  void setCachedPayload(result.id, result);
+
+  const offsetMs = await getLyricsOffset(result.id, videoId);
+  return { ...result, offsetMs };
+}
+
 export async function searchOnce(
   candidate: SearchCandidate,
   prioritizeKaraoke: boolean = false,
   videoId?: string,
+  duration?: number,
 ): Promise<LyricsData | null> {
   const { trackName, artistName, albumName } = candidate;
   if (!trackName) return null;
@@ -640,8 +747,8 @@ export async function searchOnce(
       .slice()
       .sort(
         (a, b) =>
-          scoreResult(b, trackName, artistName, albumName, prioritizeKaraoke) -
-          scoreResult(a, trackName, artistName, albumName, prioritizeKaraoke),
+        scoreResult(b, trackName, artistName, albumName, prioritizeKaraoke, duration) -
+        scoreResult(a, trackName, artistName, albumName, prioritizeKaraoke, duration),
       )[0] || null;
 
   if (typeof best?.id === "number") {
@@ -665,6 +772,8 @@ export interface LyricsPayload {
   albumName?: string;
   /** YouTube video ID – used to cache/retrieve karaoke lyrics by video */
   videoId?: string;
+  /** Video duration in seconds – used for exact /api/get lookup and search scoring */
+  duration?: number;
 }
 
 /**
@@ -834,22 +943,19 @@ export async function findLyrics(
 
   // Check for video overrides in remote config
   if (videoId) {
-    try {
-      const blacklist = await getOrFetchBlacklist();
-      const overrides = blacklist.videoOverrides ?? {};
-      if (videoId in overrides) {
-        const overrideId = overrides[videoId];
-        console.log(`[Lyrics] Applying video override for videoId ${videoId} -> ID ${overrideId}`);
-        if (overrideId) {
-          const lyrics = await fetchLyricsByIdWithCache(overrideId);
-          if (lyrics) {
-            const offsetMs = await getLyricsOffset(overrideId, videoId);
-            return { ...lyrics, offsetMs };
-          }
+    const blacklist = await getOrFetchBlacklist();
+    const overrides = blacklist.videoOverrides ?? {};
+    if (videoId in overrides) {
+      const overrideId = overrides[videoId];
+      console.log(`[Lyrics] Applying video override for videoId ${videoId} -> ID ${overrideId}`);
+      if (overrideId) {
+        const lyrics = await fetchLyricsByIdWithCache(overrideId);
+        if (lyrics) {
+          const offsetMs = await getLyricsOffset(overrideId, videoId);
+          return { ...lyrics, offsetMs };
         }
       }
-    } catch (e) {
-      console.warn("[Lyrics] Failed to apply video override:", e);
+      return null;
     }
   }
 
@@ -887,18 +993,40 @@ export async function findLyrics(
     return cachedNormal;
   }
 
-  // ── 3. No cache: try karaoke first, then normal sequential search ─────────
+  // ── 3. No cache: try karaoke first, then exact /api/get with duration, then normal sequential search ─
   if (prioritizeKaraoke) {
     const karaokeResult = await searchAndCacheKaraoke(payload);
     if (karaokeResult) return karaokeResult;
   }
 
+  const { duration } = payload;
+  let plainFromSignature: LyricsData | null = null;
+  if (
+    typeof duration === "number" &&
+    duration >= 1 &&
+    duration <= 3600 &&
+    payload.trackName &&
+    payload.artistName
+  ) {
+    const direct = await fetchLyricsBySignature(
+      payload.trackName,
+      payload.artistName,
+      duration,
+      payload.albumName,
+      videoId,
+    );
+    if (direct?.syncedLyrics) {
+      return direct;
+    }
+    plainFromSignature = direct;
+  }
+
   for (const candidate of normalCandidates) {
-    const result = await searchOnce(candidate, false, videoId);
+    const result = await searchOnce(candidate, false, videoId, duration);
     if (result) return result;
   }
 
-  return null;
+  return plainFromSignature;
 }
 
 async function collectDiagnostics(
@@ -994,6 +1122,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const performFetch = async () => {
       if (forceRefresh) {
+        const cachedBlacklist = (
+          await chrome.storage.local.get(BLACKLIST_CACHE_KEY)
+        )[BLACKLIST_CACHE_KEY] as CachedBlacklist | undefined;
+        const overrideId = videoId
+          ? cachedBlacklist?.config?.videoOverrides?.[videoId]
+          : undefined;
+        if (overrideId && Number.isFinite(overrideId)) {
+          await chrome.storage.local.remove(
+            `${LYRICS_PAYLOAD_PREFIX}${overrideId}`,
+          );
+        }
+        await chrome.storage.local.remove(BLACKLIST_CACHE_KEY);
+
         const normalCandidates = createNormalCandidates(message.payload);
         for (const candidate of normalCandidates) {
           const cacheKey = lyricsCacheKey(candidate);

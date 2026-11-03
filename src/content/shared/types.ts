@@ -27,6 +27,7 @@ export interface WatchInfo {
   trackName: string;
   albumName?: string;
   thumbnail?: string;
+  duration?: number;
 }
 
 export interface LyricsData {

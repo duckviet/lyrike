@@ -94,6 +94,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch:
             originalTitle: track.title,
             albumName: track.albumName,
             videoId: track.videoId,
+            duration: track.duration,
             forceRefresh: refreshCount > 0,
           },
         },

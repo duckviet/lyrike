@@ -10,11 +10,11 @@ export { TITLE_NOISE_WORDS };
 const COLLAB_KEYWORDS = ["feat", "ft", "cùng với"];
 const COLLAB_PATTERN = COLLAB_KEYWORDS.join("|");
 const COLLAB_SEGMENT_RE = new RegExp(
-  String.raw`\s*[[(]?\s*(?:${COLLAB_PATTERN})\.?\s+[^\])\]]+[)\]]?`,
+  String.raw`\s*[[(]\s*\b(?:${COLLAB_PATTERN})\b\.?\s+[^\])\]]+[)\]]`,
   "gi",
 );
 const COLLAB_TRAILING_RE = new RegExp(
-  String.raw`\s+(?:${COLLAB_PATTERN})\.?\s+.*$`,
+  String.raw`\s+\b(?:${COLLAB_PATTERN})\b\.?\s+.*$`,
   "i",
 );
 
@@ -79,6 +79,10 @@ export function cleanTrackName(value: string): string {
   // Remove bracketed content containing album/ep/single/ost
   result = result.replace(BRACKET_CONTEXT_SQ_RE, "");
   result = result.replace(BRACKET_CONTEXT_RD_RE, "");
+
+  // Remove (From ...) or [From ...] soundtrack/album references
+  result = result.replace(/\s*\(\s*from\s+[^)]+\)/gi, "");
+  result = result.replace(/\s*\[\s*from\s+[^\]]+\]/gi, "");
 
   // Remove (Prod. ...) or [Prod. ...]
   result = result.replace(/\s*\[\s*prod\.?[^\]]*\]/gi, "");

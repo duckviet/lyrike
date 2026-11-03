@@ -21,6 +21,9 @@ const ALBUM_BRACKET_RE = new RegExp(
   "i",
 );
 
+const FROM_ALBUM_QUOTED_RE =
+  /\bfrom\s+(?:the\s+)?(?:album|ep)\s+["“”'‘’]([^"“”'‘’]+)["“”'‘’]/i;
+
 export function parseDescriptionMeta(
   description: string,
   channelName: string,
@@ -90,53 +93,61 @@ export function inferSongInfo(
   // 1. Extract album name from title if present
   let titleAlbumName: string | undefined;
 
-  // Try trailing pipe first
-  const albumMatch = title.match(ALBUM_TRAILING_PIPE_RE);
-  if (albumMatch) {
-    titleAlbumName = albumMatch[1].trim();
-  } else {
-    // Try bracketed content
-    const bracketMatch = title.match(ALBUM_BRACKET_RE);
-    if (bracketMatch) {
-      const rawAlbum = bracketMatch[0].slice(1, -1).trim();
-      if (!ALBUM_NOISE_RE.test(rawAlbum)) {
-        titleAlbumName = rawAlbum;
+    const quotedFromAlbum = title.match(FROM_ALBUM_QUOTED_RE);
+    if (quotedFromAlbum) {
+      titleAlbumName = quotedFromAlbum[1].trim();
+    } else {
+        // Try trailing pipe first
+        const albumMatch = title.match(ALBUM_TRAILING_PIPE_RE);
+        if (albumMatch) {
+          const rawAlbum = albumMatch[1].trim();
+          if (!ALBUM_NOISE_RE.test(rawAlbum)) {
+            titleAlbumName = rawAlbum;
+          }
+        } else {
+          // Try bracketed content
+          const bracketMatch = title.match(ALBUM_BRACKET_RE);
+          if (bracketMatch) {
+            const rawAlbum = bracketMatch[0].slice(1, -1).trim();
+            if (!ALBUM_NOISE_RE.test(rawAlbum)) {
+              titleAlbumName = rawAlbum;
+            }
+          }
+        }
       }
+
+      // 2. YouTube Music auto-generated "Artist - Topic" channels
+      if (/\s*-\s*topic\s*$/i.test(channelName)) {
+        const descMeta = parseDescriptionMeta(description, channelName, null);
+        return {
+          artistName: normalizeChannelToArtist(channelName),
+          trackName: cleanTrackName(removeBracketedNoise(title)),
+          albumName: descMeta.albumName || titleAlbumName,
+        };
+      }
+
+      // 3. Title parsing — try pipe first, then dash
+      const pipeResult = parsePipeSeparatedTitle(title, channelName);
+      const dashResult = parseDashSeparatedTitle(title, channelName);
+      const titleResult = pipeResult || dashResult;
+
+      // 4. Description metadata — pass titleResult so it knows whether to
+      //    attempt first-line fallback
+      const descMeta = parseDescriptionMeta(description, channelName, titleResult);
+
+      // 5. Merge: description structured fields > title parse > channel fallback
+      const artistName = extractPrimaryArtist(
+        descMeta.artistName ||
+        titleResult?.artistName ||
+        normalizeChannelToArtist(channelName),
+      );
+
+      const trackName =
+        descMeta.trackName ||
+        titleResult?.trackName ||
+        cleanTrackName(removeBracketedNoise(title));
+
+      const albumName = descMeta.albumName || titleAlbumName;
+
+      return { artistName, trackName, albumName };
     }
-  }
-
-  // 2. YouTube Music auto-generated "Artist - Topic" channels
-  if (/\s*-\s*topic\s*$/i.test(channelName)) {
-    const descMeta = parseDescriptionMeta(description, channelName, null);
-    return {
-      artistName: normalizeChannelToArtist(channelName),
-      trackName: cleanTrackName(removeBracketedNoise(title)),
-      albumName: descMeta.albumName || titleAlbumName,
-    };
-  }
-
-  // 3. Title parsing — try pipe first, then dash
-  const pipeResult = parsePipeSeparatedTitle(title, channelName);
-  const dashResult = parseDashSeparatedTitle(title, channelName);
-  const titleResult = pipeResult || dashResult;
-
-  // 4. Description metadata — pass titleResult so it knows whether to
-  //    attempt first-line fallback
-  const descMeta = parseDescriptionMeta(description, channelName, titleResult);
-
-  // 5. Merge: description structured fields > title parse > channel fallback
-  const artistName = extractPrimaryArtist(
-    descMeta.artistName ||
-      titleResult?.artistName ||
-      normalizeChannelToArtist(channelName),
-  );
-
-  const trackName =
-    descMeta.trackName ||
-    titleResult?.trackName ||
-    cleanTrackName(removeBracketedNoise(title));
-
-  const albumName = descMeta.albumName || titleAlbumName;
-
-  return { artistName, trackName, albumName };
-}

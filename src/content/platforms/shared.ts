@@ -80,6 +80,48 @@ export function getBestMediaElement(): HTMLVideoElement | HTMLAudioElement | nul
   return visibleMedia[0] ?? mediaElements[0] ?? null;
 }
 
+function parseClockDurationSec(raw: string): number | undefined {
+  const cleaned = raw.trim();
+  if (!/^\d{1,2}(?::\d{2}){1,2}$/.test(cleaned)) return undefined;
+  const parts = cleaned.split(":").map(Number);
+  const seconds =
+    parts.length === 3
+      ? parts[0] * 3600 + parts[1] * 60 + parts[2]
+      : parts[0] * 60 + parts[1];
+  return seconds > 0 && seconds <= 3600 ? seconds : undefined;
+}
+
+export function getMediaDurationSec(): number | undefined {
+  const isAd =
+    typeof document !== "undefined" &&
+    !!document.querySelector(".html5-video-player.ad-showing");
+
+  if (!isAd) {
+    const rawDuration = getBestMediaElement()?.duration;
+    if (
+      typeof rawDuration === "number" &&
+      Number.isFinite(rawDuration) &&
+      rawDuration > 0 &&
+      rawDuration <= 3600
+    ) {
+      return Math.round(rawDuration);
+    }
+
+    const ytDurationText = queryText([".ytp-time-duration"]);
+    const parsedYt = ytDurationText
+      ? parseClockDurationSec(ytDurationText)
+      : undefined;
+    if (parsedYt) return parsedYt;
+
+    const ytmTimeInfo = queryText(["ytmusic-player-bar .time-info"]);
+    const totalPart = ytmTimeInfo.split("/")[1];
+    const parsedYtm = totalPart ? parseClockDurationSec(totalPart) : undefined;
+    if (parsedYtm) return parsedYtm;
+  }
+
+  return undefined;
+}
+
 export function captureVideoStreamFromElement(
   mediaElement: HTMLVideoElement | HTMLAudioElement | null,
 ): MediaStream | null {

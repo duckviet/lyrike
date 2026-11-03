@@ -23,6 +23,7 @@ function toWatchInfo(track: TrackMeta | null): WatchInfo | null {
     trackName,
     albumName: track.albumName ?? albumName,
     thumbnail: track.thumbnail,
+    duration: track.duration,
   };
 }
 

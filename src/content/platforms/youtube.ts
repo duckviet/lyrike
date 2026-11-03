@@ -5,6 +5,7 @@ import {
   createTrackChangeSubscription,
   getVideoThumbnailUrl,
   getBestMediaElement,
+  getMediaDurationSec,
   normalizeVolume,
   queryText,
 } from "./shared";
@@ -42,6 +43,7 @@ function getFallbackTrackMeta(trackId: string): TrackMeta {
     channelName,
     artistName: normalizeChannelToArtist(channelName),
     thumbnail: getVideoThumbnailUrl(trackId),
+    duration: getMediaDurationSec(),
   };
 }
 
@@ -76,6 +78,7 @@ export const youtubeAdapter: PlatformAdapter = {
           details.channelTitle || fallbackMeta.channelName,
         ),
         thumbnail: details.thumbnail,
+        duration: fallbackMeta.duration ?? getMediaDurationSec(),
       };
     } catch (error) {
       console.warn("[youtubeAdapter] video details fetch failed, using DOM data", error);

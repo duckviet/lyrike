@@ -257,4 +257,33 @@ Album: Gặp Lại
     expect(result.artistName).toBe("KAZE");
     expect(result.trackName).toBe("EXISTIAN SONRISAS");
   });
+
+  test("Should not truncate words ending in 'ft' like 'Lift Me Up' and should strip '(From ...)'", () => {
+    const title = "Rihanna - Lift Me Up (From Black Panther: Wakanda Forever)";
+    const channelName = "RihannaVEVO";
+
+    const result = inferSongInfo(title, channelName);
+    expect(result.artistName).toBe("Rihanna");
+    expect(result.trackName).toBe("Lift Me Up");
+  });
+
+  test("Should extract quoted album from 'from album' and ignore Lyric Video pipe noise", () => {
+    const title =
+      "AMEE x B RAY - Ex’s Hate Me (Part 2) | Lyric Video (from album “dreAMEE”)";
+    const channelName = "ST.319 Entertainment";
+
+    const result = inferSongInfo(title, channelName);
+    expect(result.artistName).toBe("AMEE");
+    expect(result.trackName).toBe("Ex’s Hate Me (Part 2)");
+    expect(result.albumName).toBe("dreAMEE");
+  });
+
+  test("Should parse underscore-separated K-Pop titles (e.g. 1theK)", () => {
+    const title = "[MV] IU(아이유) _ Blueming(블루밍)";
+    const channelName = "1theK (원더케이)";
+
+    const result = inferSongInfo(title, channelName);
+    expect(result.artistName).toBe("IU(아이유)");
+    expect(result.trackName).toBe("Blueming(블루밍)");
+  });
 });
