@@ -29,6 +29,8 @@ interface FloatingLyricsWidgetProps {
   settings: Settings | null;
   onStartDrag: (event: React.MouseEvent<HTMLElement>) => void;
   onOpenPiP: () => void;
+  karaokeMode?: boolean;
+  onToggleKaraoke?: () => void;
   onToggleMinimized: () => void;
   onHide: () => void;
   onTabChange: (tab: string) => void;
@@ -57,6 +59,8 @@ export function FloatingLyricsWidget({
   settings,
   onStartDrag,
   onOpenPiP,
+  karaokeMode,
+  onToggleKaraoke,
   onToggleMinimized,
   onHide,
   onTabChange,
@@ -122,8 +126,10 @@ export function FloatingLyricsWidget({
         title={title}
         artist={artist}
         minimized={minimized}
+        karaokeMode={karaokeMode}
         onStartDrag={onStartDrag}
         onOpenPiP={onOpenPiP}
+        onToggleKaraoke={onToggleKaraoke}
         onToggleMinimized={onToggleMinimized}
         onHide={onHide}
         onRefetch={onRefetch}

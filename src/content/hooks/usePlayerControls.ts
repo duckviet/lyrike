@@ -1,11 +1,22 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePlatform } from "../PlatformContext";
+import { setMediaKaraokeMode } from "../utils/karaokeAudio";
 
 export function usePlayerControls() {
   const platform = usePlatform();
   const [isPaused, setIsPaused] = useState(true);
   const [volume, setVolumeState] = useState(1);
   const [offset, setOffset] = useState(0);
+  const [karaokeMode, setKaraokeMode] = useState(false);
+  const karaokeModeRef = useRef(karaokeMode);
+
+  useEffect(() => {
+    karaokeModeRef.current = karaokeMode;
+    const media = platform.getMediaElement();
+    if (!media) return;
+    const isAd = platform.isAdShowing?.() ?? false;
+    setMediaKaraokeMode(media, !isAd && karaokeMode);
+  }, [platform, karaokeMode]);
 
   useEffect(() => {
     if (!platform.isPlayerPage()) {
@@ -15,11 +26,19 @@ export function usePlayerControls() {
     const findMedia = () => platform.getMediaElement();
 
     let media = findMedia();
-    
+
+
+    const applyKaraoke = (target: HTMLVideoElement | HTMLAudioElement | null) => {
+      if (!target) return;
+      const isAd = platform.isAdShowing?.() ?? false;
+      setMediaKaraokeMode(target, !isAd && karaokeModeRef.current);
+    };
+
     const updateState = () => {
       if (media) {
         setIsPaused(media.paused);
         setVolumeState(media.volume);
+        applyKaraoke(media);
       }
     };
 
@@ -44,7 +63,10 @@ export function usePlayerControls() {
     const observer = new MutationObserver(() => {
       const newMedia = findMedia();
       if (newMedia !== media) {
-        if (media) cleanupListeners(media);
+        if (media) {
+          setMediaKaraokeMode(media, false);
+          cleanupListeners(media);
+        }
         media = newMedia;
         if (media) {
           setupListeners(media);
@@ -56,7 +78,10 @@ export function usePlayerControls() {
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      if (media) cleanupListeners(media);
+      if (media) {
+        setMediaKaraokeMode(media, false);
+        cleanupListeners(media);
+      }
       observer.disconnect();
     };
   }, [platform]);
@@ -81,15 +106,21 @@ export function usePlayerControls() {
     setOffset((prev) => prev + delta);
   }, []);
 
+  const toggleKaraokeMode = useCallback(() => {
+    setKaraokeMode((prev) => !prev);
+  }, []);
+
   return {
     isPaused,
     volume,
     offset,
+    karaokeMode,
     togglePlay,
     nextTrack,
     prevTrack,
     setVolume,
     adjustOffset,
     setOffset,
+    toggleKaraokeMode,
   };
 }

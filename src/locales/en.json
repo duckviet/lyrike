@@ -10,6 +10,8 @@
   },
   "header": {
     "pip": "Picture-in-Picture",
+    "karaoke_on": "Disable Karaoke Mode (restore vocals)",
+    "karaoke_off": "Enable Karaoke Mode (reduce vocals)",
     "minimize": "Minimize",
     "expand": "Expand",
     "hide": "Hide",

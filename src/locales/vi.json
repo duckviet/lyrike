@@ -10,6 +10,8 @@
   },
   "header": {
     "pip": "Picture-in-Picture",
+    "karaoke_on": "Tắt chế độ Karaoke (khôi phục giọng hát)",
+    "karaoke_off": "Bật chế độ Karaoke (tách lời bài hát)",
     "minimize": "Thu nhỏ",
     "expand": "Mở rộng",
     "hide": "Ẩn",

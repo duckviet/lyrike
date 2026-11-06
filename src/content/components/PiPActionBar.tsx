@@ -13,11 +13,13 @@ interface PiPActionBarProps {
     isPaused: boolean;
     volume: number;
     offset: number;
+    karaokeMode?: boolean;
     togglePlay: () => void;
     nextTrack: () => void;
     prevTrack: () => void;
     setVolume: (v: number) => void;
     adjustOffset: (d: number) => void;
+    toggleKaraokeMode?: () => void;
   };
 }
 
@@ -325,6 +327,56 @@ export const PiPActionBar: React.FC<PiPActionBarProps> = ({
         </div>
 
         <div style={dividerStyle} />
+
+        {/* Karaoke Mode Button */}
+        {playerControls.toggleKaraokeMode && (
+          <button
+            onClick={playerControls.toggleKaraokeMode}
+            style={{
+              ...btnStyle,
+              width: 24,
+              height: 24,
+              background: playerControls.karaokeMode
+                ? "rgba(52, 211, 153, 0.28)"
+                : "rgba(255,255,255,0.12)",
+              color: playerControls.karaokeMode
+                ? "#6ee7b7"
+                : "rgba(255,255,255,0.9)",
+            }}
+            title={
+              playerControls.karaokeMode
+                ? t("header.karaoke_on")
+                : t("header.karaoke_off")
+            }
+            aria-pressed={playerControls.karaokeMode}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = playerControls.karaokeMode
+                ? "rgba(52, 211, 153, 0.38)"
+                : "rgba(255,255,255,0.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = playerControls.karaokeMode
+                ? "rgba(52, 211, 153, 0.28)"
+                : "rgba(255,255,255,0.12)";
+            }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="13"
+              height="13"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ display: "block" }}
+            >
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+            </svg>
+          </button>
+        )}
 
         {/* Quick Report Button */}
         <button
