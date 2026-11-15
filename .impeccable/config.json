@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "montserrat",
+        "createdAt": "2026-11-12T12:41:15.009Z",
+        "reason": "User confirmed 2026-11-12: Montserrat stays as body face (the extension's default lyric font)"
+      }
+    ]
+  }
+}

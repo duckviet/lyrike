@@ -1,0 +1,768 @@
+@import "tailwindcss";
+
+/* Light page, dark window: the page is "everything else on your screen",
+   the lyric window is the one dark object floating over it.
+   Radius rule: window 20px (the extension's default), controls are pills,
+   thumbnails 12px. */
+@theme inline {
+  --color-ground: #f2f3f5;
+  --color-ink: #0f0f12; /* the widget's own colour in the extension */
+  --color-ink-2: #45484f;
+  --color-ink-3: #666a73;
+  --color-line: rgb(15 15 18 / 0.14);
+  --color-brand: var(--brand);
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cal), var(--font-montserrat), sans-serif;
+}
+
+:root {
+  /* ---- BRAND COLOUR -------------------------------------------------
+     Change this one value to try another brand colour (the extension's
+     own accent is #b4a0ff). Bands, text selection and the window's accents
+     all follow it. */
+  --brand: #1c3fa8;
+
+  /* Text and buttons that sit on a brand-coloured field. Flips between
+     black and white by itself depending on how light --brand is; the first
+     line is the fallback for browsers without relative colours. */
+  --on-brand: #0f0f12;
+
+  /* The lyric window's own palette (the extension's widget colours). Its
+     accent sits on a dark surface, so it is the brand colour lightened;
+     for a brand that is already light, use var(--brand) directly. */
+  --win-bg: rgb(15 15 18 / 0.88);
+  --win-text: #fff;
+  --win-muted: rgb(255 255 255 / 0.68);
+  --win-faint: rgb(255 255 255 / 0.44);
+  --win-line: rgb(255 255 255 / 0.08);
+  --win-hover: rgb(255 255 255 / 0.08);
+  --win-active: rgb(255 255 255 / 0.12);
+  --win-field: rgb(38 38 44 / 0.8);
+  --win-accent: color-mix(in oklab, var(--brand) 45%, white);
+
+  --ink-hover: #2a2b31;
+  --paper: #fff;
+  --sheet-dim: #7b7f88;
+}
+@supports (color: oklch(from red l c h)) {
+  :root {
+    --on-brand: oklch(from var(--brand) clamp(0, (0.62 - l) * 999, 1) 0 0);
+  }
+}
+
+/* Demo fonts: fetched only when a visitor picks them. */
+@font-face {
+  font-family: Tinos;
+  src: url(/fonts/Tinos-Regular.woff2) format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: Tinos;
+  font-weight: 700;
+  src: url(/fonts/Tinos-Bold.woff2) format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Amatic SC";
+  font-weight: 400 700;
+  src: url(/fonts/AmaticSC-Bold.woff2) format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: Fahkwang;
+  src: url(/fonts/Fahkwang-Regular.woff2) format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: Fahkwang;
+  font-weight: 600 700;
+  src: url(/fonts/Fahkwang-SemiBold.woff2) format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Playwrite NO";
+  font-weight: 100 400;
+  src: url(/fonts/PlaywriteNO-VariableFont_wght.woff2) format("woff2");
+  font-display: swap;
+}
+
+html {
+  color-scheme: light;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  scrollbar-color: rgb(15 15 18 / 0.35) transparent;
+  -webkit-font-smoothing: antialiased;
+}
+/* Base layer, so the window and band can restyle focus and selection. */
+@layer base {
+::selection {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+/* Ink, not brand: a light brand colour would vanish on the light page. */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+}
+
+/* In a layer so Tailwind utilities (e.g. max-sm:hidden) can override these. */
+@layer components {
+p {
+  text-wrap: pretty;
+}
+.link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+.link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3.25rem;
+  padding: 0 1.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-align: center;
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn-sm {
+  min-height: 2.5rem;
+  padding: 0 1.1rem;
+  font-size: 0.875rem;
+}
+.btn-ink {
+  background: var(--color-ink);
+  color: var(--paper);
+}
+.btn-ink:hover {
+  background: var(--ink-hover);
+}
+/* On a brand band: the button takes the band's text colour. */
+.btn-onaccent {
+  background: var(--on-brand);
+  color: var(--brand);
+}
+.btn-onaccent:hover {
+  opacity: 0.86;
+}
+
+/* A full-bleed field in the brand colour. */
+.band {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.band :focus-visible {
+  outline-color: var(--on-brand);
+}
+.band ::selection {
+  background: var(--on-brand);
+  color: var(--brand);
+}
+
+/* Controls */
+.chip,
+.track {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.75rem;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--color-line);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-ink-2);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.chip:hover,
+.track:hover {
+  background: rgb(15 15 18 / 0.06);
+  color: var(--color-ink);
+}
+.chip[aria-pressed="true"],
+.track[aria-pressed="true"] {
+  background: var(--color-ink);
+  color: var(--paper);
+  box-shadow: none;
+}
+.track {
+  min-height: 3.5rem;
+  padding: 0 1.25rem 0 0.375rem;
+}
+.track img {
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.faq summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary::after {
+  content: "+";
+  font-weight: 400;
+  color: var(--color-ink-3);
+  transition: rotate 0.2s;
+}
+.faq[open] summary::after {
+  rotate: 45deg;
+}
+
+/* The song printed on the page; long lines run underneath the window. */
+.sheet {
+  margin-top: 3.5rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3.7vw, 3.25rem);
+  line-height: 1.22;
+  color: var(--sheet-dim);
+}
+.sheet li {
+  transition: color 0.5s;
+}
+.sheet li[data-on="true"] {
+  color: var(--color-ink);
+}
+
+/* ---- The lyric window ------------------------------------------------
+   .lw mirrors the extension's floating widget (FloatingLyricsWidget,
+   WidgetHeader, TabSwitcher in src/content/components). .lw-demo, below it,
+   holds the controls that only this demo needs.
+   Below 1280px the pair sticks to the top edge; from 1280px it floats,
+   fixed and draggable, beside the text column. Sizes are in rem so they
+   follow the visitor's text size. */
+.lw-wrap {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 30;
+  max-width: 30rem;
+  margin: 0 1.25rem;
+  --lw-h: 8.25rem;
+}
+@media (min-width: 1024px) {
+  .lw-wrap {
+    margin: 0 2.5rem;
+  }
+}
+@media (min-width: 1280px) {
+  .lw-wrap {
+    position: fixed;
+    top: 6rem;
+    right: max(2.5rem, calc((100vw - 1280px) / 2 + 2.5rem));
+    width: 22.5rem;
+    margin: 0;
+    --lw-h: 14.5rem;
+  }
+  .lw-head {
+    cursor: grab;
+    touch-action: none;
+  }
+  .lw-head:active {
+    cursor: grabbing;
+  }
+}
+.lw {
+  overflow: hidden;
+  padding: 0.75rem;
+  border-radius: 20px;
+  background: var(--win-bg);
+  backdrop-filter: blur(20px);
+  color: var(--win-text);
+  box-shadow:
+    inset 0 0 0 1px var(--win-line),
+    0 16px 48px rgb(15 15 18 / 0.3);
+}
+.lw :focus-visible {
+  outline-color: var(--win-accent);
+  outline-offset: 2px;
+}
+.lw-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--win-line);
+  user-select: none;
+}
+.lw-meta {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  padding: 0.5rem;
+}
+.lw-meta strong,
+.lw-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lw-meta strong {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.lw-meta span {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--win-muted);
+}
+.lw-head button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  border-radius: 12px;
+  color: var(--win-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.lw-head button:hover {
+  background: var(--win-hover);
+  color: var(--win-text);
+}
+.lw-head button:active {
+  scale: 0.94;
+}
+.lw svg {
+  width: 18px;
+  height: 18px;
+}
+.lw-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  border-bottom: 1px solid var(--win-line);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.2);
+}
+.lw-tabs button {
+  flex: 1;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--win-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.lw-tabs button:hover {
+  background: var(--win-hover);
+  color: var(--win-text);
+}
+.lw-tabs button[aria-pressed="true"] {
+  background: var(--win-active);
+  color: var(--win-text);
+}
+
+.lw-lyrics {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: var(--lw-h);
+  padding: 0 0.75rem;
+  border-radius: 0 0 12px 12px;
+}
+.lw-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(20px) brightness(0.5);
+  scale: 1.15;
+}
+/* Vinyl: same drawing as the extension's PiP artwork. */
+.lw-vinyl {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(
+      circle,
+      #1a1a1f 0,
+      #232329 1.5px,
+      #101014 3px,
+      #1a1a1f 4.5px
+    ),
+    #0a0a0c;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+  animation: lw-spin 6s linear infinite;
+}
+.lw-vinyl img {
+  width: 44%;
+  height: 44%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.lw-wrap[data-paused="true"] .lw-vinyl {
+  animation-play-state: paused;
+}
+.lw-classic {
+  height: 100%;
+}
+.lw-classic ol {
+  transition: transform 0.5s cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+.lw-classic li {
+  padding: 0.3rem 0;
+  font-size: 1rem;
+  line-height: 1.4;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.lw-classic li[data-d="0"] {
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 1;
+  text-shadow: 0 0 20px rgb(255 255 255 / 0.15);
+}
+/* Fading neighbours stay above 4.5:1 on the window colour. */
+.lw-classic li[data-d="1"] {
+  opacity: 0.72;
+}
+.lw-classic li[data-d="2"] {
+  opacity: 0.52;
+}
+
+.lw-poster {
+  display: grid;
+  align-content: center;
+  height: 100%;
+}
+.lw-poster p {
+  font-size: 1.625rem;
+  font-weight: 700;
+  line-height: 1.2;
+  opacity: 0;
+}
+.lw-poster p + p {
+  margin-top: 0.5rem;
+}
+.lw-poster p[data-on="true"] {
+  animation: lw-line 0.5s both;
+}
+.lw-ghost {
+  position: absolute;
+  left: -0.25rem;
+  top: 58%;
+  z-index: -1;
+  font-size: 3.6rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0.06;
+  rotate: -5deg;
+  animation: lw-ghost 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* "Searching for lyrics..." and "playing in PiP" */
+.lw-state {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.6rem;
+  height: var(--lw-h);
+  font-size: 0.875rem;
+  color: var(--win-faint);
+}
+.lw-state button {
+  color: var(--win-text);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}
+.lw-dots {
+  display: flex;
+  gap: 0.25rem;
+}
+.lw-dots i {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: var(--win-accent);
+  animation: lw-pulse 1.4s ease-in-out infinite;
+}
+.lw-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.lw-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Settings tab */
+.lw-settings {
+  display: grid;
+  gap: 0.75rem;
+  max-height: max(var(--lw-h), min(46dvh, 22rem));
+  padding: 0.75rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+  font-size: 0.8125rem;
+}
+.lw-settings h3 {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--win-accent);
+}
+.lw-settings p {
+  margin-top: -0.5rem;
+  font-size: 0.75rem;
+  color: var(--win-muted);
+}
+.lw-settings label {
+  display: grid;
+  gap: 0.375rem;
+  font-weight: 500;
+}
+.lw-settings select {
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: 12px;
+  background: var(--win-field);
+  color: var(--win-text);
+  font-weight: 500;
+  cursor: pointer;
+}
+.lw-settings .lw-switch {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  min-height: 2.25rem;
+  cursor: pointer;
+}
+.lw-switch input {
+  appearance: none;
+  position: relative;
+  width: 2.5rem;
+  height: 1.375rem;
+  border-radius: 999px;
+  background: var(--win-field);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.lw-switch input::after {
+  content: "";
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--win-text);
+  transition: translate 0.15s;
+}
+.lw-switch input:checked {
+  background: var(--win-accent);
+}
+.lw-switch input:checked::after {
+  translate: 1.125rem 0;
+  background: #0f0f12;
+}
+
+/* What the extension leaves behind when the widget is hidden. */
+.lw-reopen {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding: 0.75rem 1.25rem;
+  border-radius: 16px;
+  background: rgb(28 28 32 / 0.95);
+  color: var(--win-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  box-shadow: 0 16px 48px rgb(15 15 18 / 0.3);
+  cursor: pointer;
+  transition: translate 0.15s;
+}
+.lw-reopen:hover {
+  translate: 0 -2px;
+}
+
+/* Demo-only controls, visibly outside the product's window. */
+.lw-demo {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  margin-top: 0.5rem;
+  padding: 0.25rem 1rem 0.25rem 0.25rem;
+  border-radius: 999px;
+  background: var(--color-ground);
+  box-shadow:
+    inset 0 0 0 1px var(--color-line),
+    0 8px 24px rgb(15 15 18 / 0.12);
+  font-size: 0.75rem;
+  color: var(--color-ink-2);
+}
+.lw-demo button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.lw-demo button:hover {
+  background: rgb(15 15 18 / 0.07);
+}
+.lw-demo svg {
+  width: 16px;
+  height: 16px;
+}
+.lw-demo p {
+  flex: 1;
+  min-width: 0;
+  margin-left: 0.25rem;
+}
+.lw-demo a {
+  flex: none;
+  padding: 0.5rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+/* Moving the window only exists for the floating (desktop) layout. */
+.lw-demo .lw-move,
+.lw-drag {
+  display: none;
+}
+@media (min-width: 1280px) {
+  .lw-demo .lw-move {
+    display: grid;
+    cursor: grab;
+  }
+  .lw-drag {
+    display: inline;
+  }
+}
+
+/* Overrides: these sit after the base rules they adjust. */
+/* Short screens (a phone on its side): one line of lyrics, no demo strip. */
+@media (max-height: 500px) {
+  .lw-wrap {
+    --lw-h: 4.25rem;
+  }
+  .lw-demo {
+    display: none;
+  }
+}
+/* Phones: tabs and the demo strip take room, so the lyric area gives some back. */
+@media (max-width: 639.98px) {
+  .lw-wrap {
+    --lw-h: 5.75rem;
+  }
+}
+/* The compact (sticky) window sets its big lines smaller so three-line
+   lyrics still fit. */
+@media (max-width: 1279.98px) {
+  .lw-classic li[data-d="0"],
+  .lw-poster p {
+    font-size: 1.25rem;
+  }
+  .lw-ghost {
+    font-size: 2.75rem;
+  }
+}
+/* Inside the real Picture-in-Picture window */
+.lw-pip-body {
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--win-text);
+}
+.lw-pip-body .lw-lyrics {
+  height: 100vh;
+  padding: 0 1.25rem;
+  border-radius: 0;
+}
+
+}
+
+@keyframes lw-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+@keyframes lw-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+@keyframes lw-line {
+  from {
+    opacity: 0;
+    translate: 0 0.4em;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes lw-ghost {
+  from {
+    translate: 100% 0;
+  }
+}
+
+/* Less motion: nothing slides, spins or blurs in; colour and opacity
+   feedback stays so state changes are still visible. */
+@media (prefers-reduced-motion: reduce) {
+  .lw-vinyl,
+  .lw-ghost,
+  .lw-dots i,
+  .lw-poster p[data-on="true"] {
+    animation: none;
+  }
+  .lw-poster p[data-on="true"] {
+    opacity: 1;
+  }
+  .lw-classic ol,
+  .btn,
+  .faq summary::after {
+    transition: none;
+  }
+}

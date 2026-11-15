@@ -250,18 +250,20 @@ async function slack(env, method, body) {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!data.ok) throw new Error(`Slack ${method}: ${data.error}`);
+  // response_metadata.messages says which argument Slack rejected (e.g. for invalid_arguments).
+  if (!data.ok) throw new Error(`Slack ${method}: ${data.error} ${(data.response_metadata?.messages || []).join("; ")}`.trim());
   return data;
 }
 
 const DEFAULT_LIST_ID = "F0BF6LLURAT";
+// Real column_ids from slackLists.items.list (not the column "key" shown in the List schema).
 const COL = {
-  track: "name",
-  artist: "Col0BFN2NKKPU",
-  link: "Col0BFQ05ESTB",
-  resolve: "Col0BFJPB34BX",
-  lyricsId: "Col0BFJPE4NFP",
-  description: "Col0BG5LV1HPC",
+  track: "Col0BFPUYBFT3",
+  artist: "Col0BFQ015DMX",
+  link: "Col0BFFQN915H",
+  resolve: "Col0BFL2H7MP0",
+  lyricsId: "Col0BFFQV8KCK",
+  description: "Col0BH0146PKJ",
 };
 
 const richText = (text) => [
@@ -287,12 +289,14 @@ async function createListItem(env, { trackName, artistName, videoUrl, lyricsId, 
 
 async function createReport(env, report) {
   let itemId = null;
+  let listError = "";
   try {
     itemId = await createListItem(env, report);
   } catch (e) {
     console.error("createListItem failed", e);
+    listError = e.message;
   }
-  await postResolveMessage(env, { ...report, itemId });
+  await postResolveMessage(env, { ...report, itemId, listError });
 }
 
 async function tickListItem(env, itemId) {
@@ -302,7 +306,7 @@ async function tickListItem(env, itemId) {
   });
 }
 
-function postResolveMessage(env, { trackName, artistName, videoUrl, videoId, lyricsId, description, itemId }) {
+function postResolveMessage(env, { trackName, artistName, videoUrl, videoId, lyricsId, description, itemId, listError }) {
   return slack(env, "chat.postMessage", {
     channel: env.SLACK_CHANNEL_ID,
     text: `Missing lyric: ${esc(trackName) || videoId}`,
@@ -326,6 +330,10 @@ function postResolveMessage(env, { trackName, artistName, videoUrl, videoId, lyr
           },
         ],
       },
+      // Surface List failures in the channel; otherwise they only show in `wrangler tail`.
+      ...(listError
+        ? [{ type: "context", elements: [{ type: "mrkdwn", text: `⚠️ Not added to List: \`${esc(listError)}\`` }] }]
+        : []),
     ],
   });
 }
