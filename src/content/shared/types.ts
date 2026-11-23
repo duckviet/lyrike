@@ -40,6 +40,10 @@ export interface LyricsData {
   id?: number;
   instrumental?: boolean;
   offsetMs?: number;
+  /** True when `lyricsfile` carries per-word timings. */
+  hasWordSync?: boolean;
+  /** Raw LRCLIB Lyricsfile YAML (source of word-level timings). */
+  lyricsfile?: string | null;
 }
 
 /** Why a lyrics request failed, so the UI can explain it and offer a fix. */

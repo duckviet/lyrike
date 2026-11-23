@@ -56,6 +56,7 @@ import {
   LrclibRateLimitError,
   LrclibHttpError,
   classifyLyricsError,
+  reportModeOf,
 } from "./background";
 import { LyricsData } from "./content/shared/types";
 
@@ -279,6 +280,178 @@ describe("background helper functions", () => {
       expect(result).toEqual(dummyAPIResult);
       // Should have run search twice (candidate 1: with album, candidate 2: without album)
       expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test("findLyrics: prioritizeKaraoke picks a hasWordSync result from /api/v2/search and keeps its lyricsfile", async () => {
+      mockStore["lyrics_extension_settings"] = { prioritizeKaraoke: true };
+      const summary = (id: number, duration: number, hasWordSync: boolean) => ({
+        id,
+        trackName: "Price Tag",
+        artistName: "Jessie J",
+        albumName: "Who You Are",
+        duration,
+        hasWordSync,
+        syncedLyrics: null,
+        plainLyrics: null,
+      });
+      const full: LyricsData = {
+        id: 8277602,
+        trackName: "Price Tag",
+        artistName: "Jessie J",
+        albumName: "Who You Are",
+        duration: 223,
+        plainLyrics: "p",
+        syncedLyrics: "[00:03.39] Okay",
+        hasWordSync: true,
+        lyricsfile: "lines:\n- text: Okay\n  start_ms: 3390\n",
+      };
+
+      const fetchSpy = vi.spyOn(global, "fetch").mockImplementation((async (
+        input: any,
+      ) => {
+        const url = String(input);
+        if (url.includes("/api/v2/search")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => [
+              summary(1, 189, false), // no word sync
+              summary(2, 199, true), // word sync but duration far off: ranks below
+              summary(8277602, 223, true),
+            ],
+          };
+        }
+        if (url.endsWith("/api/get/8277602")) {
+          return { status: 200, ok: true, json: async () => full };
+        }
+        return { status: 404, ok: false };
+      }) as any);
+
+      const result = await findLyrics({
+        trackName: "Price Tag",
+        artistName: "Jessie J",
+        channelName: "Jessie J",
+        originalTitle: "Jessie J - Price Tag",
+        albumName: "Who You Are",
+        duration: 222,
+      });
+
+      expect(result).toMatchObject({
+        id: 8277602,
+        hasWordSync: true,
+        lyricsfile: full.lyricsfile,
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(String(fetchSpy.mock.calls[0][0])).toContain("/api/v2/search");
+      expect(mockStore["lyrics:jessie j:price tag:who you are"]).toBe(
+        "8277602#0",
+      );
+      // lyricsfile survives the payload cache round-trip
+      expect(mockStore["lyrics_payload:8277602"].lyricsfile).toBe(
+        full.lyricsfile,
+      );
+    });
+
+    test("findLyrics: prioritizeKaraoke still uses word sync when video duration differs a lot (music video)", async () => {
+      mockStore["lyrics_extension_settings"] = { prioritizeKaraoke: true };
+      const full: LyricsData = {
+        id: 2916408,
+        trackName: "Take a Bow",
+        artistName: "Rihanna",
+        duration: 229,
+        plainLyrics: "p",
+        syncedLyrics: "[00:01.00] hi",
+        hasWordSync: true,
+        lyricsfile: "lines:\n- text: hi\n  start_ms: 1000\n",
+      };
+      vi.spyOn(global, "fetch").mockImplementation((async (input: any) => {
+        const url = String(input);
+        if (url.includes("/api/v2/search")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => [{ ...full, syncedLyrics: null, plainLyrics: null }],
+          };
+        }
+        if (url.endsWith("/api/get/2916408")) {
+          return { status: 200, ok: true, json: async () => full };
+        }
+        return { status: 404, ok: false };
+      }) as any);
+
+      const result = await findLyrics({
+        trackName: "Take a Bow",
+        artistName: "Rihanna",
+        channelName: "Rihanna",
+        originalTitle: "Rihanna - Take a Bow",
+        duration: 247, // MV is longer than the 229s track
+      });
+      expect(result).toMatchObject({ id: 2916408, hasWordSync: true });
+    });
+
+    test("fetch by id: payload cached before lyricsfile was stored is refetched", async () => {
+      // legacy entry: no `lyricsfile` key at all
+      mockStore["lyrics_payload:2916408"] = {
+        id: 2916408,
+        plainLyrics: "p",
+        syncedLyrics: "[00:01.00] hi",
+        cachedAt: 1,
+      };
+      mockStore["lyrics:rihanna:take a bow:"] = "2916408#0";
+      const fresh: LyricsData = {
+        id: 2916408,
+        plainLyrics: "p",
+        syncedLyrics: "[00:01.00] hi",
+        hasWordSync: true,
+        lyricsfile: "lines:\n- text: hi\n  start_ms: 1000\n",
+      };
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => fresh,
+      } as any);
+
+      const result = await searchOnce({
+        trackName: "Take a Bow",
+        artistName: "Rihanna",
+      });
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "https://lrclib.net/api/get/2916408",
+        expect.anything(),
+      );
+      expect(result).toMatchObject({ hasWordSync: true, lyricsfile: fresh.lyricsfile });
+    });
+
+    test("findLyrics: prioritizeKaraoke falls back to normal search when no hasWordSync result matches", async () => {
+      mockStore["lyrics_extension_settings"] = { prioritizeKaraoke: true };
+      const plain: LyricsData = {
+        id: 77,
+        trackName: "Em",
+        artistName: "Binz",
+        plainLyrics: "p",
+        syncedLyrics: "[00:01.00] hi",
+      };
+      vi.spyOn(global, "fetch").mockImplementation((async (input: any) => {
+        const url = String(input);
+        if (url.includes("/api/v2/search")) {
+          return { status: 200, ok: true, json: async () => [] };
+        }
+        if (url.includes("/api/search")) {
+          // karaoke-title search finds nothing, normal search finds `plain`
+          const karaoke = /karaoke/i.test(decodeURIComponent(url));
+          return { status: 200, ok: true, json: async () => (karaoke ? [] : [plain]) };
+        }
+        return { status: 404, ok: false };
+      }) as any);
+
+      const result = await findLyrics({
+        trackName: "Em",
+        artistName: "Binz",
+        channelName: "Binz",
+        originalTitle: "Binz - Em",
+      });
+      expect(result).toMatchObject({ id: 77 });
+      expect(result?.hasWordSync).toBeFalsy();
     });
 
     test("findLyrics: should try /api/get with duration first when duration is provided", async () => {
@@ -645,6 +818,90 @@ describe("background helper functions", () => {
       for (const call of fetchSpy.mock.calls) {
         expect(String(call[0])).toContain("api/get/888");
       }
+    });
+
+    describe("karaoke-aware overrides", () => {
+      const payload = {
+        trackName: "Wrong Name",
+        artistName: "Wrong Artist",
+        channelName: "Chan",
+        originalTitle: "Wrong",
+        videoId: "vid_k",
+      };
+      const lyric = (id: number, extra: Partial<LyricsData> = {}): LyricsData => ({
+        id,
+        trackName: "Real Song",
+        artistName: "Real Artist",
+        plainLyrics: "p",
+        syncedLyrics: "[00:01.00] hi",
+        ...extra,
+      });
+
+      const mockApi = (byId: Record<number, LyricsData>, v2: LyricsData[] = []) =>
+        vi.spyOn(global, "fetch").mockImplementation((async (input: any) => {
+          const url = String(input);
+          if (url.includes("/api/v2/search")) {
+            return { status: 200, ok: true, json: async () => v2 };
+          }
+          const m = url.match(/\/api\/get\/(\d+)$/);
+          if (m && byId[Number(m[1])]) {
+            return { status: 200, ok: true, json: async () => byId[Number(m[1])] };
+          }
+          return { status: 404, ok: false };
+        }) as any);
+
+      test("karaokeOverrides applies only when prioritizeKaraoke is on", async () => {
+        setBlacklistMock({
+          videoOverrides: { vid_k: 1 },
+          karaokeOverrides: { vid_k: 2 },
+        });
+        mockApi({ 1: lyric(1), 2: lyric(2, { hasWordSync: true, lyricsfile: "x" }) });
+
+        mockStore["lyrics_extension_settings"] = { prioritizeKaraoke: true };
+        expect((await findLyrics(payload))?.id).toBe(2);
+
+        mockStore["lyrics_extension_settings"] = { prioritizeKaraoke: false };
+        expect((await findLyrics(payload))?.id).toBe(1);
+      });
+
+      test("a normal videoOverride does not block word sync in karaoke mode", async () => {
+        setBlacklistMock({ videoOverrides: { vid_k: 1 } });
+        mockStore["lyrics_extension_settings"] = { prioritizeKaraoke: true };
+        const wordSynced = lyric(5, { hasWordSync: true, lyricsfile: "x" });
+        const fetchSpy = mockApi({ 1: lyric(1), 5: wordSynced }, [
+          { ...wordSynced, syncedLyrics: null, plainLyrics: null },
+        ]);
+
+        const result = await findLyrics(payload);
+        expect(result?.id).toBe(5);
+        // searched with the override's metadata, not the (wrong) payload's
+        const v2Url = String(
+          fetchSpy.mock.calls.find((c) => String(c[0]).includes("/api/v2/search"))![0],
+        );
+        expect(v2Url).toContain("track_name=Real+Song");
+      });
+
+      test("a normal videoOverride still wins when no word sync exists", async () => {
+        setBlacklistMock({ videoOverrides: { vid_k: 1 } });
+        mockStore["lyrics_extension_settings"] = { prioritizeKaraoke: true };
+        mockApi({ 1: lyric(1) }, []);
+
+        expect((await findLyrics(payload))?.id).toBe(1);
+      });
+    });
+
+    describe("reportModeOf", () => {
+      const base: LyricsData = { plainLyrics: null, syncedLyrics: "[00:01.00] a" };
+      test("wordsync only when karaoke mode is on and the lyric is word-synced", () => {
+        const ws = { ...base, hasWordSync: true };
+        expect(reportModeOf(ws, true)).toBe("wordsync");
+        expect(reportModeOf(ws, false)).toBe("line");
+        expect(reportModeOf(base, true)).toBe("line");
+      });
+      test("legacy <mm:ss> tagged lyrics count as word-synced", () => {
+        const tagged = { ...base, syncedLyrics: "[00:01.00]<00:01.20>hi" };
+        expect(reportModeOf(tagged, true)).toBe("wordsync");
+      });
     });
   });
 });

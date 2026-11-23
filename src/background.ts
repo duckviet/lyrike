@@ -11,6 +11,8 @@ export const DURATION_MISMATCH_PENALTY = -15;
 export interface RemoteBlacklistConfig {
   blacklistedLyricsIds?: number[];
   videoOverrides?: Record<string, number>;
+  /** Per-video override that only applies when prioritizeKaraoke is on. */
+  karaokeOverrides?: Record<string, number>;
 }
 
 const BLACKLIST_URL = "https://raw.githubusercontent.com/duckviet/lyrike/main/blacklist.json";
@@ -389,6 +391,8 @@ export interface CachedLyricsEntry {
   syncedLyrics: string | null;
   instrumental?: boolean;
   duration?: number;
+  hasWordSync?: boolean;
+  lyricsfile?: string | null;
   cachedAt: number; // Unix ms — when first stored
 }
 
@@ -479,6 +483,8 @@ async function writeCachedPayload(id: number, data: LyricsData): Promise<void> {
       syncedLyrics: data.syncedLyrics ?? null,
       instrumental: data.instrumental,
       duration: data.duration,
+      hasWordSync: data.hasWordSync,
+      lyricsfile: data.lyricsfile ?? null,
       cachedAt: Date.now(),
     };
 
@@ -514,7 +520,9 @@ async function fetchLyricsByIdWithCache(
   id: number,
 ): Promise<LyricsData | null> {
   const cached = await getCachedPayload(id);
-  if (cached) {
+  // `lyricsfile` is absent only on entries cached before it was stored
+  // (new entries save null at minimum): refetch so word sync isn't lost.
+  if (cached && cached.lyricsfile !== undefined) {
     // Reconstruct as LyricsData (CachedLyricsEntry is a strict subset)
     return {
       id: cached.id,
@@ -525,6 +533,8 @@ async function fetchLyricsByIdWithCache(
       syncedLyrics: cached.syncedLyrics,
       instrumental: cached.instrumental,
       duration: cached.duration,
+      hasWordSync: cached.hasWordSync,
+      lyricsfile: cached.lyricsfile,
     };
   }
 
@@ -849,7 +859,7 @@ async function findFirstCachedLyrics(
  * Intentionally does NOT fall back to the plain track — callers that need
  * a normal lyrics fallback should handle that separately.
  */
-async function searchAndCacheKaraoke(
+async function searchTaggedKaraoke(
   payload: LyricsPayload,
 ): Promise<LyricsData | null> {
   const { trackName, artistName, albumName, videoId } = payload;
@@ -884,6 +894,96 @@ async function searchAndCacheKaraoke(
   }
 
   return null;
+}
+
+/**
+ * Finds a word-synced (karaoke-style highlight) result via /api/v2/search,
+ * which flags it with `hasWordSync`, then loads its full payload by id.
+ * Duration only ranks (scoreResult): a music video is often longer than the
+ * audio track, so a hard window would reject every candidate.
+ * Costs one search + one get instead of guessing "... Karaoke" titles.
+ */
+async function searchWordSync(
+  payload: LyricsPayload,
+): Promise<LyricsData | null> {
+  const { trackName, artistName, albumName, videoId, duration } = payload;
+  if (!trackName) return null;
+
+  const cacheKey = lyricsCacheKey({ trackName, artistName, albumName });
+  const resolved = await resolveCachedEntry(
+    cacheKey,
+    (await chrome.storage.local.get(cacheKey))[cacheKey],
+    videoId,
+  );
+  const hit = resolved ? await fetchLyricsByIdWithCache(resolved.id) : null;
+  if (resolved && hit?.hasWordSync) {
+    return { ...hit, offsetMs: resolved.offsetMs };
+  }
+
+  const missKey = `lyrics_miss:wordsync:${cacheKey}`;
+  const missedAt = (await chrome.storage.local.get(missKey))[missKey];
+  if (
+    typeof missedAt === "number" &&
+    Date.now() - missedAt < LYRICS_MISS_TTL_MS
+  ) {
+    return null;
+  }
+
+  const url = new URL("https://lrclib.net/api/v2/search");
+  url.searchParams.set("track_name", trackName);
+  if (artistName) url.searchParams.set("artist_name", artistName);
+
+  const response = await lrclibFetch(url.toString());
+  if (!response.ok) {
+    throw new LrclibHttpError(
+      `LRCLIB v2 search error: ${response.status}`,
+      response.status,
+    );
+  }
+
+  const results: LyricsData[] = await response.json();
+  const blacklistedIds =
+    (await getOrFetchBlacklist()).blacklistedLyricsIds ?? [];
+  const best = results
+    .filter(
+      (r) =>
+        r.hasWordSync &&
+        typeof r.id === "number" &&
+        !blacklistedIds.includes(r.id),
+    )
+    .sort(
+      (a, b) =>
+        scoreResult(b, trackName, artistName, albumName, false, duration) -
+        scoreResult(a, trackName, artistName, albumName, false, duration),
+    )[0];
+
+  const full = best?.id ? await fetchLyricsByIdWithCache(best.id) : null;
+  if (!full?.id || !full.lyricsfile || !full.hasWordSync) {
+    await chrome.storage.local.set({ [missKey]: Date.now() });
+    return null;
+  }
+
+  await chrome.storage.local.set({ [cacheKey]: `${full.id}#0` });
+  await initializeLyricsOffset(full.id);
+  return { ...full, offsetMs: await getLyricsOffset(full.id, videoId) };
+}
+
+/**
+ * Word-sync (lyricsfile) first; falls back to the older title-based karaoke
+ * search whose results carry `<mm:ss>` tags inside syncedLyrics.
+ */
+async function searchAndCacheKaraoke(
+  payload: LyricsPayload,
+): Promise<LyricsData | null> {
+  try {
+    const wordSync = await searchWordSync(payload);
+    if (wordSync) return wordSync;
+  } catch (err) {
+    // v2 is beta: a broken endpoint must not block the fallback.
+    if (err instanceof LrclibRateLimitError) throw err;
+    console.warn("[Lyrics] Word-sync search failed:", err);
+  }
+  return searchTaggedKaraoke(payload);
 }
 
 /**
@@ -941,24 +1041,6 @@ export async function findLyrics(
 ): Promise<LyricsData | null> {
   const { videoId } = payload;
 
-  // Check for video overrides in remote config
-  if (videoId) {
-    const blacklist = await getOrFetchBlacklist();
-    const overrides = blacklist.videoOverrides ?? {};
-    if (videoId in overrides) {
-      const overrideId = overrides[videoId];
-      console.log(`[Lyrics] Applying video override for videoId ${videoId} -> ID ${overrideId}`);
-      if (overrideId) {
-        const lyrics = await fetchLyricsByIdWithCache(overrideId);
-        if (lyrics) {
-          const offsetMs = await getLyricsOffset(overrideId, videoId);
-          return { ...lyrics, offsetMs };
-        }
-      }
-      return null;
-    }
-  }
-
   let prioritizeKaraoke = false;
   try {
     const settingsResult = await chrome.storage.local.get(
@@ -972,13 +1054,50 @@ export async function findLyrics(
     console.error("[Lyrics background] Failed to load settings:", e);
   }
 
+  // Check for video overrides in remote config.
+  // karaokeOverrides win in karaoke mode; videoOverrides are the normal-mode
+  // pick and must not stop karaoke mode from finding word sync (below).
+  if (videoId) {
+    const blacklist = await getOrFetchBlacklist();
+    const karaokeOverrides = prioritizeKaraoke
+      ? (blacklist.karaokeOverrides ?? {})
+      : {};
+    const isKaraokeOverride = videoId in karaokeOverrides;
+    const overrides = isKaraokeOverride
+      ? karaokeOverrides
+      : (blacklist.videoOverrides ?? {});
+    if (videoId in overrides) {
+      const overrideId = overrides[videoId];
+      console.log(`[Lyrics] Applying video override for videoId ${videoId} -> ID ${overrideId}`);
+      if (overrideId) {
+        const lyrics = await fetchLyricsByIdWithCache(overrideId);
+        if (lyrics) {
+          if (prioritizeKaraoke && !isKaraokeOverride && !lyrics.hasWordSync) {
+            // Search with the override's own metadata so it is the same song.
+            // A failed search must not lose the override itself.
+            const karaoke = await searchAndCacheKaraoke({
+              ...payload,
+              trackName: lyrics.trackName || payload.trackName,
+              artistName: lyrics.artistName || payload.artistName,
+              albumName: lyrics.albumName || payload.albumName,
+            }).catch(() => null);
+            if (karaoke) return karaoke;
+          }
+          const offsetMs = await getLyricsOffset(overrideId, videoId);
+          return { ...lyrics, offsetMs };
+        }
+      }
+      return null;
+    }
+  }
+
   const normalCandidates = createNormalCandidates(payload);
 
   // ── 1. Any cache hit → return immediately, search karaoke async if needed ─
   // Pass videoId so the resolved offset is video-specific where available.
   const cachedNormal = await findFirstCachedLyrics(normalCandidates, videoId);
   if (cachedNormal) {
-    if (prioritizeKaraoke) {
+    if (prioritizeKaraoke && !cachedNormal.hasWordSync) {
       // Run karaoke search in parallel; push result to UI when ready.
       void searchAndCacheKaraoke(payload)
         .then(async (karaoke) => {
@@ -1072,6 +1191,18 @@ async function collectDiagnostics(
   };
 }
 
+export type ReportMode = "wordsync" | "line";
+
+/** What the reporter actually saw: word highlight only when karaoke mode is on. */
+export function reportModeOf(
+  lyrics: LyricsData,
+  prioritizeKaraoke: boolean,
+): ReportMode {
+  const wordSynced =
+    lyrics.hasWordSync || /<\d{1,2}:\d{2}/.test(lyrics.syncedLyrics ?? "");
+  return prioritizeKaraoke && wordSynced ? "wordsync" : "line";
+}
+
 async function handleReportIssue(payload: {
   description: string;
   trackName?: string;
@@ -1086,6 +1217,19 @@ async function handleReportIssue(payload: {
     payload.artistName,
     payload.albumName,
   );
+
+  // Derived here (not in each UI sender): the cached payload tells whether the
+  // reported id is word-synced, the setting tells whether it was shown that way.
+  let mode: ReportMode | undefined;
+  if (typeof payload.lyricsId === "number") {
+    try {
+      const lyrics = await fetchLyricsByIdWithCache(payload.lyricsId);
+      const settings = diagnostics.settings as Settings | undefined;
+      if (lyrics) mode = reportModeOf(lyrics, settings?.prioritizeKaraoke ?? false);
+    } catch (e) {
+      console.warn("[Lyrics] Could not resolve report mode:", e);
+    }
+  }
 
   const workerUrl =
     (import.meta.env?.VITE_REPORT_PROXY_URL as string) ||
@@ -1103,6 +1247,7 @@ async function handleReportIssue(payload: {
       albumName: payload.albumName,
       videoUrl: payload.videoUrl,
       lyricsId: payload.lyricsId,
+      mode,
       thumbnail: payload.thumbnail,
       diagnostics,
     }),
@@ -1125,13 +1270,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const cachedBlacklist = (
           await chrome.storage.local.get(BLACKLIST_CACHE_KEY)
         )[BLACKLIST_CACHE_KEY] as CachedBlacklist | undefined;
-        const overrideId = videoId
-          ? cachedBlacklist?.config?.videoOverrides?.[videoId]
-          : undefined;
-        if (overrideId && Number.isFinite(overrideId)) {
-          await chrome.storage.local.remove(
-            `${LYRICS_PAYLOAD_PREFIX}${overrideId}`,
-          );
+        for (const overrideId of videoId
+          ? [
+              cachedBlacklist?.config?.videoOverrides?.[videoId],
+              cachedBlacklist?.config?.karaokeOverrides?.[videoId],
+            ]
+          : []) {
+          if (overrideId && Number.isFinite(overrideId)) {
+            await chrome.storage.local.remove(
+              `${LYRICS_PAYLOAD_PREFIX}${overrideId}`,
+            );
+          }
         }
         await chrome.storage.local.remove(BLACKLIST_CACHE_KEY);
 

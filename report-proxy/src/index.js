@@ -53,6 +53,7 @@ export default {
     const artistName = str(payload.artistName);
     const albumName = str(payload.albumName);
     const lyricsId = /^\d{1,12}$/.test(String(payload.lyricsId ?? "")) ? String(payload.lyricsId) : "";
+    const mode = MODES.includes(payload.mode) ? payload.mode : "";
     const reportVideoId = parseVideoId(payload.videoUrl);
     // Rebuilt from the id, so only a real YouTube watch URL ever reaches Slack.
     const videoUrl = reportVideoId ? `https://www.youtube.com/watch?v=${reportVideoId}` : "";
@@ -76,7 +77,7 @@ export default {
 
     if (hasTrack && reportVideoId && env.SLACK_BOT_TOKEN && env.SLACK_CHANNEL_ID) {
       ctx.waitUntil(
-        createReport(env, { trackName, artistName, videoUrl, videoId: reportVideoId, lyricsId, description }).catch(
+        createReport(env, { trackName, artistName, videoUrl, videoId: reportVideoId, lyricsId, mode, description }).catch(
           (e) => console.error("createReport failed", e),
         ),
       );
@@ -138,6 +139,10 @@ export default {
           },
           {
             type: "mrkdwn",
+            text: `*Mode:*\n${mode || "—"}`,
+          },
+          {
+            type: "mrkdwn",
             text: `*Video URL:*\n${videoUrl ? `<${videoUrl}|Watch Video>` : "—"}`,
           },
           {
@@ -178,6 +183,7 @@ export default {
           albumName,
           videoUrl,
           lyricsId,
+          mode,
           extensionVersion: diagnostics.extensionVersion || "—",
           browserVersion: diagnostics.browserVersion || "Unknown",
           timestamp: diagnostics.timestamp || "—",
@@ -223,6 +229,10 @@ export default {
 
 const VIDEO_ID_RE = /^[\w-]{11}$/;
 
+// What the reporter saw: "wordsync" = karaoke highlight, "line" = normal lyrics.
+// Decides which blacklist.json override map a resolve writes to.
+const MODES = ["wordsync", "line"];
+
 const YOUTUBE_HOSTS = new Set(["www.youtube.com", "youtube.com", "music.youtube.com"]);
 
 const str = (v, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -264,7 +274,11 @@ const COL = {
   resolve: "Col0BFL2H7MP0",
   lyricsId: "Col0BFFQV8KCK",
   description: "Col0BH0146PKJ",
+  mode: "Col0CJ7Q898HJ",
 };
+
+// Select column takes option ids, not labels. Keyed by the extension's `mode`.
+const MODE_OPTION = { wordsync: "OptMHJL1LVV", line: "OptOSO84FOY" };
 
 const richText = (text) => [
   {
@@ -273,7 +287,7 @@ const richText = (text) => [
   },
 ];
 
-async function createListItem(env, { trackName, artistName, videoUrl, lyricsId, description }) {
+async function createListItem(env, { trackName, artistName, videoUrl, lyricsId, mode, description }) {
   const data = await slack(env, "slackLists.items.create", {
     list_id: env.SLACK_LIST_ID || DEFAULT_LIST_ID,
     initial_fields: [
@@ -282,6 +296,7 @@ async function createListItem(env, { trackName, artistName, videoUrl, lyricsId, 
       { column_id: COL.link, link: [{ original_url: videoUrl, display_as_url: true }] },
       { column_id: COL.lyricsId, rich_text: richText(lyricsId) },
       { column_id: COL.description, rich_text: richText(description) },
+      ...(MODE_OPTION[mode] ? [{ column_id: COL.mode, select: [MODE_OPTION[mode]] }] : []),
     ],
   });
   return data.item.id;
@@ -306,7 +321,7 @@ async function tickListItem(env, itemId) {
   });
 }
 
-function postResolveMessage(env, { trackName, artistName, videoUrl, videoId, lyricsId, description, itemId, listError }) {
+function postResolveMessage(env, { trackName, artistName, videoUrl, videoId, lyricsId, mode, description, itemId, listError }) {
   return slack(env, "chat.postMessage", {
     channel: env.SLACK_CHANNEL_ID,
     text: `Missing lyric: ${esc(trackName) || videoId}`,
@@ -315,7 +330,7 @@ function postResolveMessage(env, { trackName, artistName, videoUrl, videoId, lyr
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*${esc(trackName) || "—"}* – ${esc(artistName) || "—"}\n${videoUrl}\nlyricsId: \`${esc(lyricsId) || "—"}\`\n${esc(description)}`,
+          text: `*${esc(trackName) || "—"}* – ${esc(artistName) || "—"}\n${videoUrl}\nlyricsId: \`${esc(lyricsId) || "—"}\` · mode: \`${mode || "—"}\`\n${esc(description)}`,
         },
       },
       {
@@ -326,7 +341,7 @@ function postResolveMessage(env, { trackName, artistName, videoUrl, videoId, lyr
             text: { type: "plain_text", text: "Resolve" },
             style: "primary",
             action_id: "open_resolve",
-            value: JSON.stringify({ videoId, lyricsId: lyricsId ? String(lyricsId) : "", itemId }),
+            value: JSON.stringify({ videoId, lyricsId: lyricsId ? String(lyricsId) : "", mode, itemId }),
           },
         ],
       },
@@ -378,7 +393,7 @@ async function handleInteract(request, env, ctx) {
   if (payload.type === "block_actions") {
     const action = payload.actions?.[0];
     if (action?.action_id !== "open_resolve") return new Response("");
-    const { videoId, lyricsId, itemId } = JSON.parse(action.value);
+    const { videoId, lyricsId, mode, itemId } = JSON.parse(action.value);
 
     ctx.waitUntil(
       slack(env, "views.open", {
@@ -386,6 +401,7 @@ async function handleInteract(request, env, ctx) {
         view: buildResolveModal({
           videoId,
           lyricsId,
+          mode,
           itemId,
           channel: payload.channel?.id || payload.container?.channel_id,
           ts: payload.message?.ts || payload.container?.message_ts,
@@ -400,6 +416,7 @@ async function handleInteract(request, env, ctx) {
     const values = payload.view.state.values;
     const newId = (values.new_id.value.value || "").trim();
     const blacklistOld = (values.blacklist_old.value.selected_options || []).length > 0;
+    const karaoke = values.target?.value?.selected_option?.value === "wordsync";
 
     if (!VIDEO_ID_RE.test(meta.videoId)) {
       return json({ response_action: "errors", errors: { new_id: "Invalid videoId" } });
@@ -419,7 +436,7 @@ async function handleInteract(request, env, ctx) {
         const user = payload.user?.id;
         try {
           const commitUrl = await updateBlacklist(
-            { videoId: meta.videoId, oldId: Number(meta.lyricsId), newId: newId ? Number(newId) : null, blacklistOld },
+            { videoId: meta.videoId, oldId: Number(meta.lyricsId), newId: newId ? Number(newId) : null, blacklistOld, karaoke },
             env,
           );
           if (meta.itemId) await tickListItem(env, meta.itemId).catch((e) => console.error("tickListItem failed", e));
@@ -440,7 +457,12 @@ function json(obj) {
   return new Response(JSON.stringify(obj), { headers: { "Content-Type": "application/json" } });
 }
 
-function buildResolveModal({ videoId, lyricsId, itemId, channel, ts }) {
+const TARGET_OPTIONS = [
+  { text: { type: "plain_text", text: "Normal lyrics (videoOverrides)" }, value: "line" },
+  { text: { type: "plain_text", text: "Karaoke word sync (karaokeOverrides)" }, value: "wordsync" },
+];
+
+function buildResolveModal({ videoId, lyricsId, mode, itemId, channel, ts }) {
   return {
     type: "modal",
     callback_id: "resolve_modal",
@@ -451,7 +473,18 @@ function buildResolveModal({ videoId, lyricsId, itemId, channel, ts }) {
     blocks: [
       {
         type: "section",
-        text: { type: "mrkdwn", text: `Video: \`${videoId}\`\nOld lyricsId: \`${esc(lyricsId) || "—"}\`` },
+        text: { type: "mrkdwn", text: `Video: \`${videoId}\`\nOld lyricsId: \`${esc(lyricsId) || "—"}\`\nReporter saw: \`${mode || "unknown"}\`` },
+      },
+      {
+        type: "input",
+        block_id: "target",
+        label: { type: "plain_text", text: "Replacement applies to" },
+        element: {
+          type: "radio_buttons",
+          action_id: "value",
+          options: TARGET_OPTIONS,
+          initial_option: TARGET_OPTIONS.find((o) => o.value === mode) || TARGET_OPTIONS[0],
+        },
       },
       {
         type: "input",
@@ -493,7 +526,7 @@ const b64ToUtf8 = (b64) => {
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 };
 
-async function updateBlacklist({ videoId, oldId, newId, blacklistOld }, env) {
+async function updateBlacklist({ videoId, oldId, newId, blacklistOld, karaoke }, env) {
   const repo = env.GITHUB_REPO || "duckviet/lyrike";
   const path = env.GITHUB_BLACKLIST_PATH || "blacklist.json";
   const url = `https://api.github.com/repos/${repo}/contents/${path}`;
@@ -510,7 +543,12 @@ async function updateBlacklist({ videoId, oldId, newId, blacklistOld }, env) {
     const data = JSON.parse(b64ToUtf8(file.content));
 
     if (blacklistOld && !data.blacklistedLyricsIds.includes(oldId)) data.blacklistedLyricsIds.push(oldId);
-    if (newId) data.videoOverrides[videoId] = newId;
+    if (newId) {
+      // karaokeOverrides only affects users with karaoke mode on; videoOverrides is the normal pick.
+      const key = karaoke ? "karaokeOverrides" : "videoOverrides";
+      data[key] ??= {};
+      data[key][videoId] = newId;
+    }
 
     const put = await fetch(url, {
       method: "PUT",

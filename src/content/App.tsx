@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import LyricsPiPPortal from "./components/LyricsPiPPortal";
 import { getActiveLineIndex, parseSyncedLyrics } from "./utils/lyricsUtils";
+import { parseLyricsfile } from "./utils/lyricsfile";
 import {
   DEFAULT_BG_OPACITY,
   DEFAULT_BORDER_RADIUS,
@@ -67,10 +68,18 @@ export default function App(): React.JSX.Element | null {
 
   const syncedLyricsText = lyricsState.data?.syncedLyrics || "";
 
-  const syncedLines = useMemo(
-    () => parseSyncedLyrics(syncedLyricsText, settings?.prioritizeKaraoke ?? true),
-    [syncedLyricsText, settings?.prioritizeKaraoke],
-  );
+  const wordSyncFile = lyricsState.data?.hasWordSync
+    ? lyricsState.data.lyricsfile
+    : null;
+
+  const syncedLines = useMemo(() => {
+    const prioritizeKaraoke = settings?.prioritizeKaraoke ?? true;
+    // Word-level timings live in the lyricsfile; the `<mm:ss>` tags in
+    // syncedLyrics are the fallback for older uploads.
+    const fromFile =
+      prioritizeKaraoke && wordSyncFile ? parseLyricsfile(wordSyncFile) : null;
+    return fromFile ?? parseSyncedLyrics(syncedLyricsText, prioritizeKaraoke);
+  }, [syncedLyricsText, wordSyncFile, settings?.prioritizeKaraoke]);
 
   const activeIndex = useMemo(
     () => getActiveLineIndex(syncedLines, currentTime + offset),
