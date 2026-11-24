@@ -75,12 +75,12 @@ export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch:
 
     let cancelled = false;
 
-    requestAnimationFrame(() => {
-      setLyricsState({
-        loading: true,
-        data: null,
-        error: "",
-      });
+    // Microtask, not rAF: rAF is paused while the tab is hidden (PiP use), so a
+    // late "loading" reset would wipe lyrics that already arrived.
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setLyricsState({ loading: true, data: null, error: "" });
+      }
     });
 
     try {
@@ -137,7 +137,7 @@ export function useLyricsData(track: WatchInfo | null): LyricsState & { refetch:
       );
     } catch (error: unknown) {
       if (!cancelled) {
-        requestAnimationFrame(() => {
+        queueMicrotask(() => {
           setLyricsState({
             loading: false,
             data: null,
